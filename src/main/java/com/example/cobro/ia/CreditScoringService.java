@@ -58,6 +58,9 @@ public class CreditScoringService {
     @Autowired
     private AbonoRepository abonoRepository;
 
+    @Autowired
+    private HistorialMlService historialMl;
+
     private volatile ModeloClasificacion modelo;
     private volatile ScoringDTO.ModeloInfo infoModelo;
     private volatile ResumenModeloDTO resumen;
@@ -65,7 +68,7 @@ public class CreditScoringService {
     @EventListener(ApplicationReadyEvent.class)
     public void entrenarAlIniciar() {
         try {
-            entrenar();
+            entrenar(EntrenamientoModelo.Origen.INICIO);
         } catch (Exception e) {
             log.warn("No se pudo entrenar el modelo de scoring al iniciar: {}", e.getMessage());
         }
@@ -85,7 +88,11 @@ public class CreditScoringService {
      *   <li>Reentrena el elegido con todos los datos y lo pone en producción.</li>
      * </ol>
      */
-    public synchronized ResumenModeloDTO entrenar() {
+    public ResumenModeloDTO entrenar() {
+        return entrenar(EntrenamientoModelo.Origen.MANUAL);
+    }
+
+    public synchronized ResumenModeloDTO entrenar(EntrenamientoModelo.Origen origen) {
         LocalDate hoy = LocalDate.now();
         List<Muestra> reales = construirMuestrasReales(hoy);
         List<Muestra> sinteticas = generarMuestrasSinteticas(MUESTRAS_SINTETICAS, SEMILLA);
@@ -132,6 +139,7 @@ public class CreditScoringService {
         this.modelo = produccion;
         this.infoModelo = info;
         this.resumen = resumen;
+        historialMl.registrarEntrenamiento(resumen, origen);
         log.info("Modelo de scoring entrenado: {} ({} muestras reales, {} sintéticas), AUC prueba={}, AUC CV={}±{}",
                 elegido, reales.size(), sinteticas.size(), mejorPrueba.auc(), mejorCv.aucMedia(), mejorCv.aucDesviacion());
         return resumen;
@@ -273,7 +281,7 @@ public class CreditScoringService {
     }
 
     private void asegurarModelo() {
-        if (modelo == null) entrenar();
+        if (modelo == null) entrenar(EntrenamientoModelo.Origen.INICIO);
     }
 
     private static double acotar(double v, double min, double max) {
