@@ -1,18 +1,7 @@
 package com.example.cobro;
 
-import com.example.cobro.dto.CobradorDTO;
-import com.example.cobro.dto.PedidoDTO;
-import com.example.cobro.dto.ProductoDTO;
-import com.example.cobro.exception.ReglaNegocioException;
-import com.example.cobro.model.Cliente;
-import com.example.cobro.model.Pedido;
-import com.example.cobro.model.Producto;
-import com.example.cobro.model.TipoLiquidacion;
 import com.example.cobro.repository.AdministradorRepository;
 import com.example.cobro.security.PasswordHasher;
-import com.example.cobro.service.ClienteService;
-import com.example.cobro.service.CobradorService;
-import com.example.cobro.service.TiendaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +13,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import com.example.cobro.security.AuthFilter;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-class AuthYTiendaIntegrationTest {
+class AuthIntegrationTest {
 
     @Autowired private WebApplicationContext contexto;
     @Autowired private AuthFilter authFilter;
@@ -40,9 +28,6 @@ class AuthYTiendaIntegrationTest {
     @Autowired private ObjectMapper json;
     @Autowired private AdministradorRepository administradorRepository;
     @Autowired private PasswordHasher passwordHasher;
-    @Autowired private TiendaService tiendaService;
-    @Autowired private ClienteService clienteService;
-    @Autowired private CobradorService cobradorService;
 
     @BeforeEach
     void prepararMockMvc() {
@@ -94,54 +79,5 @@ class AuthYTiendaIntegrationTest {
                                 "nombre", "X", "email", "debil@test.com", "password", "corta"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.password").exists());
-    }
-
-    @Test
-    void ventaACreditoDescuentaStockYGeneraElPrestamo() {
-        CobradorDTO cobradorDto = new CobradorDTO();
-        cobradorDto.setNombre("Cobrador Tienda");
-        cobradorDto.setDocumento("TIENDA-1");
-        cobradorDto.setZona("Zona Tienda");
-        Long cobradorId = cobradorService.crear(cobradorDto).getId();
-
-        Cliente cliente = new Cliente();
-        cliente.setCedula("TIENDA-CLI-1");
-        cliente.setNombre("Cliente Tienda");
-        cliente.setDireccion("Calle 1");
-        cliente.setTelefono("0990000001");
-        cliente = clienteService.crearCliente(cliente, cobradorId);
-
-        Producto licuadora = tiendaService.crearProducto(
-                new ProductoDTO(null, "Licuadora", null, "Hogar", 40.0, 5, null, true));
-        Producto olla = tiendaService.crearProducto(
-                new ProductoDTO(null, "Olla", null, "Hogar", 10.0, 2, null, true));
-
-        Pedido pedido = tiendaService.crearPedido(new PedidoDTO.Solicitud(
-                cliente.getId(), Pedido.TipoPago.CREDITO,
-                List.of(new PedidoDTO.Item(licuadora.getId(), 2), new PedidoDTO.Item(olla.getId(), 2)),
-                TipoLiquidacion.DIARIO, 10, 20.0, null, null));
-
-        assertEquals(100.0, pedido.getTotal());
-        assertEquals(4, pedido.totalUnidades());
-        assertNotNull(pedido.getPrestamo(), "La venta a crédito genera un préstamo");
-        assertEquals(120.0, pedido.getPrestamo().getMontoTotal());
-        assertEquals(12.0, pedido.getPrestamo().getValorCuota());
-        assertEquals(cobradorId, pedido.getPrestamo().getCobrador().getId());
-        assertEquals(3, tiendaService.obtenerProducto(licuadora.getId()).getStock());
-        assertEquals(0, tiendaService.obtenerProducto(olla.getId()).getStock());
-
-        Long clienteId = cliente.getId();
-        ReglaNegocioException sinStock = assertThrows(ReglaNegocioException.class, () ->
-                tiendaService.crearPedido(new PedidoDTO.Solicitud(clienteId, Pedido.TipoPago.CONTADO,
-                        List.of(new PedidoDTO.Item(licuadora.getId(), 1), new PedidoDTO.Item(olla.getId(), 1)),
-                        null, null, null, null, null)));
-        assertTrue(sinStock.getMessage().contains("Stock insuficiente"));
-        assertEquals(3, tiendaService.obtenerProducto(licuadora.getId()).getStock(),
-                "Un pedido rechazado no debe descontar inventario");
-
-        Pedido contado = tiendaService.crearPedido(new PedidoDTO.Solicitud(clienteId, Pedido.TipoPago.CONTADO,
-                List.of(new PedidoDTO.Item(licuadora.getId(), 1)), null, null, null, null, null));
-        assertNull(contado.getPrestamo());
-        assertEquals(2, tiendaService.listarPedidosPorCliente(clienteId).size());
     }
 }
