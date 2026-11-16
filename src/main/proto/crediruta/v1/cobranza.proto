@@ -1,0 +1,69 @@
+// Ruta de cobro y registro de abonos por gRPC (pensado para la app móvil del cobrador).
+syntax = "proto3";
+
+package crediruta.v1;
+
+option java_multiple_files = true;
+option java_package = "com.example.cobro.grpc.v1";
+option java_outer_classname = "CobranzaProto";
+
+service CobranzaService {
+  // Streaming de servidor: la hoja de ruta del día, parada por parada en orden de visita.
+  rpc ObtenerRuta(RutaRequest) returns (stream Parada);
+
+  // Streaming de cliente: el cobrador envía en lote los abonos tomados sin conexión
+  // y recibe un único resumen al terminar.
+  rpc RegistrarAbonos(stream AbonoRequest) returns (ResumenAbonos);
+
+  // Bidireccional: sincronización en tiempo real; cada abono recibe su confirmación al instante.
+  rpc SincronizarCobros(stream AbonoRequest) returns (stream ConfirmacionAbono);
+}
+
+message RutaRequest {
+  int64 cobrador_id = 1;
+  // AAAA-MM-DD; vacío = hoy.
+  string fecha = 2;
+}
+
+message Parada {
+  int32 orden = 1;
+  int64 cliente_id = 2;
+  string cliente_nombre = 3;
+  string direccion = 4;
+  int64 prestamo_id = 5;
+  double valor_cuota = 6;
+  double monto_exigible = 7;
+  int32 cuotas_vencidas = 8;
+  int64 dias_atraso = 9;
+  double saldo_pendiente = 10;
+  double abonado_hoy = 11;
+  bool cobra_hoy = 12;
+  string estado = 13;
+}
+
+message AbonoRequest {
+  // Identificador generado en el dispositivo para emparejar la confirmación (idempotencia en el cliente).
+  string id_local = 1;
+  int64 prestamo_id = 2;
+  double monto = 3;
+  int64 cobrador_id = 4;
+  string observacion = 5;
+}
+
+message ConfirmacionAbono {
+  string id_local = 1;
+  bool aceptado = 2;
+  int64 abono_id = 3;
+  double saldo_prestamo = 4;
+  int32 cuotas_cubiertas = 5;
+  // Motivo del rechazo (caja cerrada, préstamo inexistente, monto inválido…).
+  string error = 6;
+}
+
+message ResumenAbonos {
+  int32 recibidos = 1;
+  int32 aceptados = 2;
+  int32 rechazados = 3;
+  double total_registrado = 4;
+  repeated ConfirmacionAbono detalle = 5;
+}
