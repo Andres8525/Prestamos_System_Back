@@ -11,7 +11,10 @@ import com.example.cobro.model.Prestamo;
 import com.example.cobro.repository.AbonoRepository;
 import com.example.cobro.repository.CuadreCajaRepository;
 import com.example.cobro.repository.PrestamoRepository;
+import com.example.cobro.tiemporeal.EventoNegocio;
+import com.example.cobro.tiemporeal.TipoEvento;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -28,6 +31,9 @@ import static com.example.cobro.service.CalculadoraIntereses.redondear;
 @Service
 @Transactional
 public class CajaService {
+
+    @Autowired
+    private ApplicationEventPublisher eventos;
 
     @Autowired
     private CobradorService cobradorService;
@@ -88,7 +94,12 @@ public class CajaService {
         cuadre.setObservacion(dto.getObservacion());
         cuadre.setFechaCierre(LocalDateTime.now());
 
-        return toDto(cuadreCajaRepository.save(cuadre), abonos, desembolsos);
+        CuadreCajaDTO resultado = toDto(cuadreCajaRepository.save(cuadre), abonos, desembolsos);
+        eventos.publishEvent(EventoNegocio.de(TipoEvento.CAJA_CERRADA,
+                "Caja cerrada: " + cobrador.getNombre() + " (" + resultado.resultado() + ")",
+                "cobradorId", cobrador.getId(), "fecha", fecha.toString(), "totalCobrado", cobrado,
+                "diferencia", resultado.diferencia(), "resultado", resultado.resultado()));
+        return resultado;
     }
 
     @Transactional(readOnly = true)
