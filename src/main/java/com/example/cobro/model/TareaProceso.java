@@ -40,7 +40,6 @@ public class TareaProceso {
     @Column(length = 120)
     private String solicitadaPor;
 
-    /** Resumen legible del resultado. */
     @Column(length = 2000)
     private String resumen;
 

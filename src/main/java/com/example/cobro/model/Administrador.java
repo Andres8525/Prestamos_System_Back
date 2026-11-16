@@ -31,13 +31,11 @@ public class Administrador extends Usuario {
         this.codigoAdmin = codigoAdmin;
     }
 
-    // Implementacion polimorfica de autenticar
     @Override
     public boolean autenticar() {
         return isActivo() && getEmail() != null && getContrasena() != null;
     }
 
-    // Implementacion polimorfica de getPermisos
     @Override
     public List<String> getPermisos() {
         return Arrays.asList(
@@ -52,7 +50,6 @@ public class Administrador extends Usuario {
         );
     }
 
-    // Implementacion polimorfica de toString
     @Override
     public String toString() {
         return "Administrador{id=" + getId() +

@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Table(name = "entrenamientos_modelo")
 public class EntrenamientoModelo {
 
-    /** Qué disparó el entrenamiento. */
     public enum Origen { INICIO, MANUAL, PROGRAMADO }
 
     @Id

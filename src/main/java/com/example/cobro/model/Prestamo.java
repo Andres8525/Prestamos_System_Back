@@ -38,7 +38,6 @@ public class Prestamo {
     /** Número de cuotas del plan (null en préstamos antiguos: se usa el valor por defecto del plan). */
     private Integer numeroCuotas;
 
-    /** Valor de la cuota regular. */
     private Double valorCuota;
 
     @Column(nullable = false)
@@ -62,7 +61,6 @@ public class Prestamo {
 
     public Prestamo() {}
 
-    // Campo calculado para el frontend
     public Long getClienteId() {
         return cliente != null ? cliente.getId() : null;
     }

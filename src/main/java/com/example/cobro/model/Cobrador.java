@@ -33,13 +33,11 @@ public class Cobrador extends Usuario {
         this.zona = zona;
     }
 
-    // Implementacion polimorfica de autenticar
     @Override
     public boolean autenticar() {
         return isActivo() && documento != null;
     }
 
-    // Implementacion polimorfica de getPermisos
     @Override
     public List<String> getPermisos() {
         return Arrays.asList(

@@ -38,7 +38,6 @@ public class Pago {
 
     public Pago() {}
 
-    // Campo calculado para el frontend
     public Long getPrestamoId() {
         return prestamo != null ? prestamo.getId() : null;
     }
@@ -49,7 +48,6 @@ public class Pago {
         return fechaPago != null ? monto : 0.0;
     }
 
-    /** Saldo pendiente de la cuota. */
     public double saldo() {
         return fechaPago != null ? 0.0 : Math.max(0.0, monto - montoPagadoEfectivo());
     }

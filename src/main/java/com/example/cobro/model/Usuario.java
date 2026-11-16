@@ -36,7 +36,6 @@ public abstract class Usuario {
         this.activo = true;
     }
 
-    // Metodos abstractos — polimorfismo
     public abstract boolean autenticar();
     public abstract List<String> getPermisos();
 

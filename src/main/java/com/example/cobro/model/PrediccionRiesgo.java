@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Table(name = "predicciones_riesgo", indexes = @Index(name = "idx_prediccion_cliente", columnList = "cliente_id, fecha"))
 public class PrediccionRiesgo {
 
-    /** Momento en que se calculó la predicción. */
     public enum Origen {
         /** Al aprobar un préstamo o renovación. */
         CREDITO_APROBADO,
