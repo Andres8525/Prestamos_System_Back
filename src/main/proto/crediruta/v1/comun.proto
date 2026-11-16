@@ -1,0 +1,21 @@
+// Tipos compartidos por los servicios gRPC de CrediRuta.
+syntax = "proto3";
+
+package crediruta.v1;
+
+option java_multiple_files = true;
+option java_package = "com.example.cobro.grpc.v1";
+option java_outer_classname = "ComunProto";
+
+// Nivel de riesgo de incumplimiento (mismos umbrales que el scoring REST: 30 % y 60 %).
+enum NivelRiesgo {
+  NIVEL_RIESGO_SIN_ESPECIFICAR = 0;
+  NIVEL_RIESGO_BAJO = 1;
+  NIVEL_RIESGO_MEDIO = 2;
+  NIVEL_RIESGO_ALTO = 3;
+}
+
+// Fecha de calendario en formato ISO-8601 (AAAA-MM-DD). Vacía = hoy.
+message Fecha {
+  string iso = 1;
+}
