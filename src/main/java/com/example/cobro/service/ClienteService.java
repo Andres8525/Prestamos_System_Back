@@ -3,7 +3,9 @@ package com.example.cobro.service;
 import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.model.Cliente;
+import com.example.cobro.model.Cobrador;
 import com.example.cobro.repository.ClienteRepository;
+import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.repository.PrestamoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,7 +23,15 @@ public class ClienteService {
     @Autowired
     private PrestamoRepository prestamoRepository;
 
+    @Autowired
+    private CobradorRepository cobradorRepository;
+
     public Cliente crearCliente(Cliente cliente) {
+        return crearCliente(cliente, null);
+    }
+
+    public Cliente crearCliente(Cliente cliente, Long cobradorId) {
+        cliente.setCobrador(resolverCobrador(cobradorId));
         if (clienteRepository.existsByCedula(cliente.getCedula())) {
             throw new ReglaNegocioException("Ya existe un cliente con la cédula: " + cliente.getCedula());
         }
@@ -49,7 +59,26 @@ public class ClienteService {
         return clienteRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
+    public List<Cliente> listarPorCobrador(Long cobradorId) {
+        return clienteRepository.findByCobrador_IdOrderByOrdenRutaAscNombreAsc(cobradorId);
+    }
+
+    private Cobrador resolverCobrador(Long cobradorId) {
+        if (cobradorId == null) return null;
+        Cobrador cobrador = cobradorRepository.findById(cobradorId)
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Cobrador", cobradorId));
+        if (!cobrador.isActivo()) {
+            throw new ReglaNegocioException("El cobrador " + cobrador.getNombre() + " está inactivo");
+        }
+        return cobrador;
+    }
+
     public Cliente actualizarCliente(Long id, Cliente datos) {
+        return actualizarCliente(id, datos, null);
+    }
+
+    public Cliente actualizarCliente(Long id, Cliente datos, Long cobradorId) {
         Cliente cliente = obtenerClienteOFallar(id);
 
         if (!cliente.getCedula().equals(datos.getCedula()) &&
@@ -61,6 +90,8 @@ public class ClienteService {
         cliente.setNombre(datos.getNombre());
         cliente.setDireccion(datos.getDireccion());
         cliente.setTelefono(datos.getTelefono());
+        cliente.setOrdenRuta(datos.getOrdenRuta());
+        cliente.setCobrador(resolverCobrador(cobradorId));
 
         return clienteRepository.save(cliente);
     }

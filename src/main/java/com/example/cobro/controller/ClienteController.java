@@ -21,13 +21,18 @@ public class ClienteController {
 
     @PostMapping
     public ResponseEntity<ClienteResponseDTO> crear(@Valid @RequestBody ClienteRequestDTO dto) {
-        Cliente creado = clienteService.crearCliente(dto.toEntity());
+        Cliente creado = clienteService.crearCliente(dto.toEntity(), dto.getCobradorId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ClienteResponseDTO.fromEntity(creado));
     }
 
     @GetMapping
     public List<ClienteResponseDTO> listar() {
         return clienteService.listarClientes().stream().map(ClienteResponseDTO::fromEntity).toList();
+    }
+
+    @GetMapping("/cobrador/{cobradorId}")
+    public List<ClienteResponseDTO> listarPorCobrador(@PathVariable Long cobradorId) {
+        return clienteService.listarPorCobrador(cobradorId).stream().map(ClienteResponseDTO::fromEntity).toList();
     }
 
     @GetMapping("/{id}")
@@ -44,7 +49,7 @@ public class ClienteController {
 
     @PutMapping("/{id}")
     public ClienteResponseDTO actualizar(@PathVariable Long id, @Valid @RequestBody ClienteRequestDTO dto) {
-        return ClienteResponseDTO.fromEntity(clienteService.actualizarCliente(id, dto.toEntity()));
+        return ClienteResponseDTO.fromEntity(clienteService.actualizarCliente(id, dto.toEntity(), dto.getCobradorId()));
     }
 
     @DeleteMapping("/{id}")

@@ -29,6 +29,14 @@ public class Cliente {
     @Column(nullable = false)
     private String telefono;
 
+    /** Cobrador responsable de visitar al cliente (ruta de cobro). */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "cobrador_id")
+    private Cobrador cobrador;
+
+    /** Posición del cliente dentro del recorrido diario del cobrador. */
+    private Integer ordenRuta;
+
     public Cliente() {}
 
     public Long getId() { return id; }
@@ -45,4 +53,10 @@ public class Cliente {
 
     public String getTelefono() { return telefono; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
+
+    public Cobrador getCobrador() { return cobrador; }
+    public void setCobrador(Cobrador cobrador) { this.cobrador = cobrador; }
+
+    public Integer getOrdenRuta() { return ordenRuta; }
+    public void setOrdenRuta(Integer ordenRuta) { this.ordenRuta = ordenRuta; }
 }
