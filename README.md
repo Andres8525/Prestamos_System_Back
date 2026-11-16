@@ -14,14 +14,27 @@ mvn test                     # pruebas unitarias e integración
 En desarrollo se carga una cartera de demostración (3 cobradores, 15 clientes, ~27 préstamos con abonos
 históricos) si no hay cobradores registrados. Se desactiva con `APP_SEED_ENABLED=false`.
 
-### Producción (perfil `prod`, PostgreSQL)
+### Variables de entorno (perfil `prod`, PostgreSQL)
+
+En local se leen de un archivo `.env` en esta carpeta (copiar `.env.example`; el `.env` no se sube a git).
+En Render se configuran en *Environment* del Web Service.
 
 | Variable | Descripción |
 |---|---|
 | `SPRING_PROFILES_ACTIVE` | `prod` |
-| `DATABASE_URL` | `jdbc:postgresql://host:5432/db` |
-| `DATABASE_USERNAME` / `DATABASE_PASSWORD` | credenciales |
-| `ALLOWED_ORIGINS` | orígenes CORS separados por coma |
+| `DATABASE_URL` | *Internal Database URL* de Render (`postgresql://usuario:clave@host/base`) o URL JDBC |
+| `DATABASE_USERNAME` / `DATABASE_PASSWORD` | solo si `DATABASE_URL` no incluye usuario y clave |
+| `ALLOWED_ORIGINS` | orígenes CORS separados por coma (ej. `https://*.vercel.app`) |
+| `APP_SEED_ENABLED` | `true` para cargar la cartera de demostración si la base está vacía |
+
+Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.profiles=prod`
+(desde fuera de Render use la *External Database URL*; el hostname interno solo resuelve dentro de Render).
+
+### Despliegue en Render
+
+1. *New + → Blueprint* y seleccionar este repositorio (usa `render.yaml`), o *New + → Web Service* con runtime **Docker**.
+2. Ingresar `DATABASE_URL` con la *Internal Database URL* de la base (misma región: Oregon).
+3. Desplegar y verificar `https://<servicio>.onrender.com/api/cobradores`.
 
 ## Módulos y endpoints principales
 
