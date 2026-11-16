@@ -69,10 +69,10 @@ public class CreditScoringService {
     /** (Re)entrena el modelo con la cartera actual más la cartera sintética de referencia. */
     public synchronized ScoringDTO.ModeloInfo entrenar() {
         LocalDate hoy = LocalDate.now();
-        List<RegresionLogistica.Muestra> reales = construirMuestrasReales(hoy);
-        List<RegresionLogistica.Muestra> sinteticas = generarMuestrasSinteticas(MUESTRAS_SINTETICAS, SEMILLA);
+        List<Muestra> reales = construirMuestrasReales(hoy);
+        List<Muestra> sinteticas = generarMuestrasSinteticas(MUESTRAS_SINTETICAS, SEMILLA);
 
-        List<RegresionLogistica.Muestra> todas = new ArrayList<>(sinteticas);
+        List<Muestra> todas = new ArrayList<>(sinteticas);
         todas.addAll(reales);
 
         RegresionLogistica nuevo = new RegresionLogistica();
@@ -84,7 +84,7 @@ public class CreditScoringService {
             pesos.put(CaracteristicasCrediticias.NOMBRES[i], Math.round(w[i] * 1000.0) / 1000.0);
         }
         // Las métricas se calculan sobre la cartera real si hay suficientes casos; si no, sobre todo el conjunto.
-        List<RegresionLogistica.Muestra> evaluacion = reales.size() >= 10 ? reales : todas;
+        List<Muestra> evaluacion = reales.size() >= 10 ? reales : todas;
         ScoringDTO.ModeloInfo info = new ScoringDTO.ModeloInfo(
                 "Regresión logística (descenso de gradiente, L2)",
                 reales.size(), sinteticas.size(),
@@ -144,8 +144,8 @@ public class CreditScoringService {
     // ---------------------------------------------------------------- dataset
 
     /** Construye muestras a partir de los préstamos cuyo desenlace ya se conoce. */
-    List<RegresionLogistica.Muestra> construirMuestrasReales(LocalDate hoy) {
-        List<RegresionLogistica.Muestra> muestras = new ArrayList<>();
+    List<Muestra> construirMuestrasReales(LocalDate hoy) {
+        List<Muestra> muestras = new ArrayList<>();
         for (Prestamo prestamo : prestamoRepository.findAll()) {
             List<Pago> cuotas = pagoRepository.findByPrestamo_IdOrderByNumeroAsc(prestamo.getId());
             if (cuotas.isEmpty()) continue;
@@ -162,7 +162,7 @@ public class CreditScoringService {
                     .count();
 
             CaracteristicasCrediticias c = ExtractorCaracteristicas.extraer(cuotas, abonos, pagadosAntes, corte);
-            if (!c.sinHistorial()) muestras.add(new RegresionLogistica.Muestra(c.comoVector(), etiqueta, PESO_REAL));
+            if (!c.sinHistorial()) muestras.add(new Muestra(c.comoVector(), etiqueta, PESO_REAL));
         }
         return muestras;
     }
@@ -185,9 +185,9 @@ public class CreditScoringService {
      * Cartera sintética de referencia. Cada cliente tiene un riesgo latente r ∈ [0,1] que determina
      * su comportamiento de pago (con ruido) y su probabilidad real de incumplir.
      */
-    static List<RegresionLogistica.Muestra> generarMuestrasSinteticas(int cantidad, long semilla) {
+    static List<Muestra> generarMuestrasSinteticas(int cantidad, long semilla) {
         Random rnd = new Random(semilla);
-        List<RegresionLogistica.Muestra> muestras = new ArrayList<>(cantidad);
+        List<Muestra> muestras = new ArrayList<>(cantidad);
         for (int i = 0; i < cantidad; i++) {
             double r = rnd.nextDouble();
             double promedio = acotar(r * 12 + rnd.nextGaussian() * 2, 0, 30);
@@ -200,7 +200,7 @@ public class CreditScoringService {
 
             double probabilidadReal = 1.0 / (1.0 + Math.exp(-8 * (r - 0.55)));
             int etiqueta = rnd.nextDouble() < probabilidadReal ? 1 : 0;
-            muestras.add(new RegresionLogistica.Muestra(new double[]{
+            muestras.add(new Muestra(new double[]{
                     promedio, maximo, tasaAtrasadas, tasaIncompletos, frecuencia, tasaSaldo, pagados
             }, etiqueta, 1.0));
         }

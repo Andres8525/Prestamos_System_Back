@@ -15,8 +15,8 @@ class CreditScoringModelTest {
 
     @Test
     void elModeloSeparaBuenosPagadoresDeMorososEnLaCarteraSintetica() {
-        List<RegresionLogistica.Muestra> entrenamiento = CreditScoringService.generarMuestrasSinteticas(800, 1L);
-        List<RegresionLogistica.Muestra> prueba = CreditScoringService.generarMuestrasSinteticas(300, 99L);
+        List<Muestra> entrenamiento = CreditScoringService.generarMuestrasSinteticas(800, 1L);
+        List<Muestra> prueba = CreditScoringService.generarMuestrasSinteticas(300, 99L);
 
         RegresionLogistica modelo = new RegresionLogistica();
         modelo.entrenar(entrenamiento);

@@ -10,7 +10,7 @@ import java.util.List;
  *   P(default | x) = σ(b + Σ wᵢ·zᵢ),   zᵢ = (xᵢ − μᵢ) / σᵢ,   σ(t) = 1 / (1 + e^(−t))
  * </pre>
  */
-public class RegresionLogistica {
+public class RegresionLogistica implements ModeloClasificacion {
 
     private final int iteraciones;
     private final double tasaAprendizaje;
@@ -31,9 +31,12 @@ public class RegresionLogistica {
         this.lambdaL2 = lambdaL2;
     }
 
-    /** Muestra de entrenamiento con su etiqueta (1 = incumplió) y peso. */
-    public record Muestra(double[] x, int y, double peso) {}
+    @Override
+    public String nombre() {
+        return "Regresión logística";
+    }
 
+    @Override
     public void entrenar(List<Muestra> muestras) {
         if (muestras.isEmpty()) throw new IllegalArgumentException("No hay muestras para entrenar");
         int n = muestras.size();
@@ -63,12 +66,14 @@ public class RegresionLogistica {
     }
 
     /** Probabilidad estimada de la clase positiva (incumplimiento). */
+    @Override
     public double predecir(double[] x) {
         verificarEntrenado();
         return sigmoide(lineal(estandarizar(x)));
     }
 
     /** Contribución de cada variable al logit (wᵢ·zᵢ): positiva aumenta el riesgo. */
+    @Override
     public double[] contribuciones(double[] x) {
         verificarEntrenado();
         double[] z = estandarizar(x);
@@ -77,27 +82,14 @@ public class RegresionLogistica {
         return c;
     }
 
-    /** Proporción de aciertos con umbral 0.5. */
-    public double exactitud(List<Muestra> muestras) {
-        long aciertos = muestras.stream()
-                .filter(m -> (predecir(m.x()) >= 0.5 ? 1 : 0) == m.y()).count();
-        return muestras.isEmpty() ? 0 : (double) aciertos / muestras.size();
+    /** Importancia global: magnitud de cada peso (las variables están estandarizadas), normalizada. */
+    @Override
+    public double[] importancia() {
+        verificarEntrenado();
+        return ModeloClasificacion.normalizar(pesos);
     }
 
-    /** Área bajo la curva ROC: probabilidad de que un moroso tenga mayor score que un buen pagador. */
-    public double auc(List<Muestra> muestras) {
-        List<Double> positivos = muestras.stream().filter(m -> m.y() == 1).map(m -> predecir(m.x())).toList();
-        List<Double> negativos = muestras.stream().filter(m -> m.y() == 0).map(m -> predecir(m.x())).toList();
-        if (positivos.isEmpty() || negativos.isEmpty()) return 0.5;
-        double suma = 0;
-        for (double p : positivos) {
-            for (double q : negativos) {
-                suma += p > q ? 1 : (p == q ? 0.5 : 0);
-            }
-        }
-        return suma / ((double) positivos.size() * negativos.size());
-    }
-
+    @Override
     public boolean estaEntrenado() {
         return pesos != null;
     }
