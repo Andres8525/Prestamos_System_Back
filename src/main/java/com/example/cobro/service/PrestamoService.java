@@ -6,6 +6,7 @@ import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.exception.RiesgoCreditoException;
 import com.example.cobro.ia.CreditScoringService;
+import com.example.cobro.ia.HistorialMlService;
 import com.example.cobro.ia.NivelRiesgo;
 import com.example.cobro.ia.ScoringDTO;
 import com.example.cobro.repository.CobradorRepository;
@@ -49,6 +50,9 @@ public class PrestamoService {
     @Autowired
     private CreditScoringService creditScoringService;
 
+    @Autowired
+    private HistorialMlService historialMl;
+
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         return crearPrestamo(new PrestamoRequestDTO(clienteId, monto, tipo), LocalDate.now());
     }
@@ -76,8 +80,10 @@ public class PrestamoService {
         ScoringDTO scoring = creditScoringService.evaluarCliente(cliente.getId());
         boolean riesgoAlto = scoring.nivelRiesgo() == NivelRiesgo.ALTO;
         if (esRenovacion && riesgoAlto && !dto.isForzarAprobacion()) {
+            historialMl.registrarPrediccion(scoring, PrediccionRiesgo.Origen.CREDITO_BLOQUEADO);
             throw new RiesgoCreditoException(scoring);
         }
+        historialMl.registrarPrediccion(scoring, PrediccionRiesgo.Origen.CREDITO_APROBADO);
 
         Prestamo prestamo = new Prestamo();
         prestamo.setCliente(cliente);

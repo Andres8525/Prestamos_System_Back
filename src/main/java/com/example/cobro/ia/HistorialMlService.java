@@ -1,7 +1,11 @@
 package com.example.cobro.ia;
 
+import com.example.cobro.model.Cliente;
 import com.example.cobro.model.EntrenamientoModelo;
+import com.example.cobro.model.PrediccionRiesgo;
+import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.EntrenamientoModeloRepository;
+import com.example.cobro.repository.PrediccionRiesgoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +28,31 @@ public class HistorialMlService {
 
     @Autowired
     private EntrenamientoModeloRepository entrenamientoRepository;
+
+    @Autowired
+    private PrediccionRiesgoRepository prediccionRepository;
+
+    @Autowired
+    private ClienteRepository clienteRepository;
+
+    /** Guarda la predicción de un cliente; se conserva aunque el crédito sea rechazado. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void registrarPrediccion(ScoringDTO scoring, PrediccionRiesgo.Origen origen) {
+        if (scoring.clienteId() == null) return;
+        try {
+            Cliente cliente = clienteRepository.getReferenceById(scoring.clienteId());
+            String algoritmo = scoring.modelo() != null ? scoring.modelo().algoritmo() : "desconocido";
+            prediccionRepository.save(new PrediccionRiesgo(cliente, scoring.probabilidadDefault(),
+                    scoring.nivelRiesgo().name(), algoritmo, origen));
+        } catch (Exception ex) {
+            log.warn("No se pudo registrar la predicción del cliente {}: {}", scoring.clienteId(), ex.getMessage());
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<PrediccionRiesgo> prediccionesDeCliente(Long clienteId) {
+        return prediccionRepository.findTop50ByCliente_IdOrderByFechaDesc(clienteId);
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrarEntrenamiento(ResumenModeloDTO resumen, EntrenamientoModelo.Origen origen) {
