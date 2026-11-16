@@ -16,7 +16,10 @@ import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.repository.PrestamoRepository;
 import com.example.cobro.service.plan.PlanLiquidacion;
+import com.example.cobro.tiemporeal.EventoNegocio;
+import com.example.cobro.tiemporeal.TipoEvento;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -52,6 +55,9 @@ public class PrestamoService {
 
     @Autowired
     private HistorialMlService historialMl;
+
+    @Autowired
+    private ApplicationEventPublisher eventos;
 
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         return crearPrestamo(new PrestamoRequestDTO(clienteId, monto, tipo), LocalDate.now());
@@ -106,6 +112,12 @@ public class PrestamoService {
         Prestamo guardado = prestamoRepository.save(prestamo);
         generarCuotas(guardado, PlanLiquidacion.de(calculo.tipoLiquidacion()),
                 calculo.montoTotal(), calculo.numeroCuotas(), fechaInicio);
+        eventos.publishEvent(EventoNegocio.de(TipoEvento.PRESTAMO_CREADO,
+                String.format(java.util.Locale.ROOT, "Nuevo préstamo #%d por %.2f", guardado.getId(), guardado.getMonto()),
+                "prestamoId", guardado.getId(), "clienteId", cliente.getId(),
+                "cobradorId", guardado.getCobrador() != null ? guardado.getCobrador().getId() : null,
+                "monto", guardado.getMonto(), "nivelRiesgo", guardado.getNivelRiesgo(),
+                "aprobadoConAlerta", guardado.getAprobadoConAlerta()));
 
         return guardado;
     }
