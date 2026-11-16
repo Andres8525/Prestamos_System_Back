@@ -1,14 +1,11 @@
 package com.example.cobro.config;
 
-import com.example.cobro.dto.AuthDTO;
 import com.example.cobro.dto.CierreCajaRequestDTO;
 import com.example.cobro.dto.CobradorDTO;
 import com.example.cobro.dto.CuadreCajaDTO;
 import com.example.cobro.dto.PrestamoRequestDTO;
 import com.example.cobro.model.*;
-import com.example.cobro.repository.AdministradorRepository;
 import com.example.cobro.repository.ClienteRepository;
-import org.springframework.beans.factory.annotation.Value;
 import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.service.*;
@@ -45,18 +42,11 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private PrestamoService prestamoService;
     @Autowired private AbonoService abonoService;
     @Autowired private CajaService cajaService;
-    @Autowired private AdministradorRepository administradorRepository;
-    @Autowired private AuthService authService;
-
-    /** Contraseña del usuario de demostración; vacía = no se crea (valor por defecto en producción). */
-    @Value("${app.seed.admin-password:}")
-    private String claveAdminDemo;
 
     private final Random rnd = new Random(7);
 
     @Override
     public void run(String... args) {
-        sembrarAdminDemo();
         if (cobradorRepository.count() > 0) return;
         log.info("Cargando cartera de demostración...");
         LocalDate hoy = LocalDate.now();
@@ -115,12 +105,6 @@ public class DataSeeder implements CommandLineRunner {
         prestamoService.actualizarEstados();
         cerrarCajasDeAyer(hoy.minusDays(1));
         log.info("Cartera de demostración cargada.");
-    }
-
-    private void sembrarAdminDemo() {
-        if (claveAdminDemo == null || claveAdminDemo.isBlank() || administradorRepository.count() > 0) return;
-        authService.registrar(new AuthDTO.Registro("Administrador Demo", "admin@cobro.com", claveAdminDemo));
-        log.info("Usuario de demostración creado: admin@cobro.com");
     }
 
     private void sembrarHistorial(Cliente cliente, Perfil perfil, LocalDate hoy) {
