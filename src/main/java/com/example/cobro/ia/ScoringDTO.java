@@ -31,6 +31,9 @@ public record ScoringDTO(
             double exactitud,
             double auc,
             LocalDateTime entrenadoEn,
-            Map<String, Double> pesos
+            /** Pesos de la regresión logística (null si el modelo elegido es otro algoritmo). */
+            Map<String, Double> pesos,
+            /** Importancia relativa de cada variable en el modelo (suma 1). */
+            Map<String, Double> importancia
     ) {}
 }

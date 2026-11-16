@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * Scoring de riesgo de crédito (Credit Scoring) con Machine Learning.
@@ -26,7 +27,8 @@ import java.util.*;
  * y la etiqueta es el desenlace final (1 = incumplimiento: más de {@value #DIAS_DEFAULT} días
  * de mora en alguna cuota; 0 = préstamo cancelado). Como una cartera nueva tiene pocos casos,
  * el conjunto se complementa con una cartera sintética reproducible (semilla fija); las muestras
- * reales pesan {@value #PESO_REAL} veces más.</p>
+ * reales pesan {@value #PESO_REAL} veces más. Se comparan varios algoritmos (regresión logística y
+ * árbol de decisión) y se usa el de mejor AUC en validación cruzada.</p>
  *
  * <p><b>Predicción.</b> Para un cliente se usan todas sus cuotas y abonos hasta hoy y el modelo
  * devuelve la probabilidad de incumplimiento, el nivel de riesgo y los factores que la explican.</p>
@@ -41,6 +43,8 @@ public class CreditScoringService {
     static final double PESO_REAL = 5.0;
     static final int MUESTRAS_SINTETICAS = 800;
     static final long SEMILLA = 2024L;
+    static final double FRACCION_PRUEBA = 0.2;
+    static final int PLIEGUES = 5;
 
     @Autowired
     private ClienteRepository clienteRepository;
@@ -54,8 +58,9 @@ public class CreditScoringService {
     @Autowired
     private AbonoRepository abonoRepository;
 
-    private volatile RegresionLogistica modelo;
+    private volatile ModeloClasificacion modelo;
     private volatile ScoringDTO.ModeloInfo infoModelo;
+    private volatile ResumenModeloDTO resumen;
 
     @EventListener(ApplicationReadyEvent.class)
     public void entrenarAlIniciar() {
@@ -66,36 +71,83 @@ public class CreditScoringService {
         }
     }
 
-    /** (Re)entrena el modelo con la cartera actual más la cartera sintética de referencia. */
-    public synchronized ScoringDTO.ModeloInfo entrenar() {
+    /** Algoritmos candidatos: se entrenan todos y se elige el de mejor AUC en validación cruzada. */
+    static List<Supplier<ModeloClasificacion>> candidatos() {
+        return List.of(RegresionLogistica::new, ArbolDecision::new);
+    }
+
+    /**
+     * (Re)entrena el modelo con la cartera actual más la cartera sintética de referencia.
+     * <ol>
+     *   <li>Separa un 20 % estratificado como conjunto de prueba (datos que el modelo nunca ve).</li>
+     *   <li>Evalúa cada algoritmo candidato con validación cruzada de 5 pliegues sobre el 80 % restante.</li>
+     *   <li>Elige el de mejor AUC promedio y mide su desempeño en el conjunto de prueba.</li>
+     *   <li>Reentrena el elegido con todos los datos y lo pone en producción.</li>
+     * </ol>
+     */
+    public synchronized ResumenModeloDTO entrenar() {
         LocalDate hoy = LocalDate.now();
         List<Muestra> reales = construirMuestrasReales(hoy);
         List<Muestra> sinteticas = generarMuestrasSinteticas(MUESTRAS_SINTETICAS, SEMILLA);
 
         List<Muestra> todas = new ArrayList<>(sinteticas);
         todas.addAll(reales);
+        ValidacionCruzada.Division division = ValidacionCruzada.dividir(todas, FRACCION_PRUEBA, SEMILLA);
 
-        RegresionLogistica nuevo = new RegresionLogistica();
-        nuevo.entrenar(todas);
-
-        Map<String, Double> pesos = new LinkedHashMap<>();
-        double[] w = nuevo.getPesos();
-        for (int i = 0; i < w.length; i++) {
-            pesos.put(CaracteristicasCrediticias.NOMBRES[i], Math.round(w[i] * 1000.0) / 1000.0);
+        List<ResumenModeloDTO.Comparacion> comparacion = new ArrayList<>();
+        Supplier<ModeloClasificacion> mejorFabrica = null;
+        ValidacionCruzada.Resultado mejorCv = null;
+        MetricasClasificacion.Resultado mejorPrueba = null;
+        for (Supplier<ModeloClasificacion> fabrica : candidatos()) {
+            ValidacionCruzada.Resultado cv =
+                    ValidacionCruzada.evaluar(fabrica, division.entrenamiento(), PLIEGUES, SEMILLA);
+            ModeloClasificacion candidato = fabrica.get();
+            candidato.entrenar(division.entrenamiento());
+            MetricasClasificacion.Resultado prueba = MetricasClasificacion.evaluar(candidato, division.prueba());
+            comparacion.add(new ResumenModeloDTO.Comparacion(candidato.nombre(), cv.aucMedia(), cv.aucDesviacion(),
+                    prueba.auc(), prueba.exactitud(), prueba.f1(), false));
+            if (mejorCv == null || cv.aucMedia() > mejorCv.aucMedia()) {
+                mejorFabrica = fabrica;
+                mejorCv = cv;
+                mejorPrueba = prueba;
+            }
         }
-        // Las métricas se calculan sobre la cartera real si hay suficientes casos; si no, sobre todo el conjunto.
-        List<Muestra> evaluacion = reales.size() >= 10 ? reales : todas;
-        ScoringDTO.ModeloInfo info = new ScoringDTO.ModeloInfo(
-                "Regresión logística (descenso de gradiente, L2)",
-                reales.size(), sinteticas.size(),
-                redondear(nuevo.exactitud(evaluacion)), redondear(nuevo.auc(evaluacion)),
-                LocalDateTime.now(), pesos);
 
-        this.modelo = nuevo;
+        ModeloClasificacion produccion = mejorFabrica.get();
+        produccion.entrenar(todas);
+        String elegido = produccion.nombre();
+        comparacion.replaceAll(c -> c.algoritmo().equals(elegido)
+                ? new ResumenModeloDTO.Comparacion(c.algoritmo(), c.aucValidacion(), c.aucDesviacion(),
+                        c.aucPrueba(), c.exactitudPrueba(), c.f1Prueba(), true)
+                : c);
+
+        ScoringDTO.ModeloInfo info = new ScoringDTO.ModeloInfo(
+                elegido, reales.size(), sinteticas.size(),
+                mejorPrueba.exactitud(), mejorPrueba.auc(), LocalDateTime.now(),
+                produccion instanceof RegresionLogistica rl ? porVariable(rl.getPesos()) : null,
+                porVariable(produccion.importancia()));
+        ResumenModeloDTO resumen = new ResumenModeloDTO(info, division.entrenamiento().size(),
+                division.prueba().size(), mejorPrueba, mejorCv, comparacion);
+
+        this.modelo = produccion;
         this.infoModelo = info;
-        log.info("Modelo de scoring entrenado: {} muestras reales, {} sintéticas, exactitud={}, AUC={}",
-                info.muestrasReales(), info.muestrasSinteticas(), info.exactitud(), info.auc());
-        return info;
+        this.resumen = resumen;
+        log.info("Modelo de scoring entrenado: {} ({} muestras reales, {} sintéticas), AUC prueba={}, AUC CV={}±{}",
+                elegido, reales.size(), sinteticas.size(), mejorPrueba.auc(), mejorCv.aucMedia(), mejorCv.aucDesviacion());
+        return resumen;
+    }
+
+    private static Map<String, Double> porVariable(double[] valores) {
+        Map<String, Double> mapa = new LinkedHashMap<>();
+        for (int i = 0; i < valores.length; i++) {
+            mapa.put(CaracteristicasCrediticias.NOMBRES[i], redondear(valores[i]));
+        }
+        return mapa;
+    }
+
+    public ResumenModeloDTO getResumen() {
+        asegurarModelo();
+        return resumen;
     }
 
     public ScoringDTO.ModeloInfo getInfoModelo() {
@@ -123,7 +175,7 @@ public class CreditScoringService {
     /** Aplica el modelo a un vector de características ya calculado. */
     public ScoringDTO evaluar(Cliente cliente, int prestamosAnteriores, CaracteristicasCrediticias c) {
         asegurarModelo();
-        RegresionLogistica m = this.modelo;
+        ModeloClasificacion m = this.modelo;
         double[] x = c.comoVector();
         double p = m.predecir(x);
         NivelRiesgo nivel = NivelRiesgo.desdeProbabilidad(p);
@@ -209,7 +261,7 @@ public class CreditScoringService {
 
     // ---------------------------------------------------------------- utilidades
 
-    private List<ScoringDTO.Factor> factores(RegresionLogistica m, double[] x) {
+    private List<ScoringDTO.Factor> factores(ModeloClasificacion m, double[] x) {
         double[] contrib = m.contribuciones(x);
         List<ScoringDTO.Factor> lista = new ArrayList<>();
         for (int i = 0; i < contrib.length; i++) {

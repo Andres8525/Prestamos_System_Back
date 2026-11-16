@@ -25,6 +25,6 @@ public class ScoringController {
     /** Reentrena el modelo con la cartera actual. */
     @PostMapping("/entrenar")
     public ScoringDTO.ModeloInfo entrenar() {
-        return creditScoringService.entrenar();
+        return creditScoringService.entrenar().modelo();
     }
 }
