@@ -30,6 +30,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     Optional<Pago> findFirstByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(Long prestamoId);
 
+    /** Cuotas pendientes de varios préstamos en una sola consulta (evita N+1). */
+    List<Pago> findByPrestamo_IdInAndFechaPagoIsNullOrderByPrestamo_IdAscNumeroAsc(java.util.Collection<Long> prestamoIds);
+
     long countByFechaPagoIsNull();
 
     List<Pago> findByFechaPagoIsNullAndFechaProgramadaBeforeOrderByFechaProgramadaAsc(LocalDate fecha);
