@@ -4,6 +4,7 @@ import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.model.Cliente;
 import com.example.cobro.repository.ClienteRepository;
+import com.example.cobro.repository.PrestamoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,9 @@ public class ClienteService {
 
     @Autowired
     private ClienteRepository clienteRepository;
+
+    @Autowired
+    private PrestamoRepository prestamoRepository;
 
     public Cliente crearCliente(Cliente cliente) {
         if (clienteRepository.existsByCedula(cliente.getCedula())) {
@@ -64,6 +68,10 @@ public class ClienteService {
     public void eliminarCliente(Long id) {
         if (!clienteRepository.existsById(id)) {
             throw RecursoNoEncontradoException.de("Cliente", id);
+        }
+        if (!prestamoRepository.findByCliente_Id(id).isEmpty()) {
+            throw new ReglaNegocioException(
+                    "No se puede eliminar el cliente porque tiene préstamos registrados");
         }
         clienteRepository.deleteById(id);
     }
