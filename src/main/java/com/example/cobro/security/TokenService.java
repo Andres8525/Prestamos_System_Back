@@ -1,7 +1,10 @@
 package com.example.cobro.security;
 
 import com.example.cobro.model.Administrador;
+import com.example.cobro.model.ParametroSistema;
+import com.example.cobro.repository.ParametroSistemaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,35 +23,55 @@ import java.util.Optional;
 
 /**
  * Emite y valida tokens de sesión en formato JWT (HS256).
- * La clave se toma de JWT_SECRET; si no está definida se genera una aleatoria al arrancar
- * (las sesiones dejan de ser válidas cuando el servidor se reinicia).
+ *
+ * <p>La clave de firma se toma de JWT_SECRET. Si no está definida se genera una aleatoria
+ * <b>una sola vez</b> y se guarda en la base de datos, de modo que las sesiones siguen siendo
+ * válidas aunque el servidor se reinicie (en Render Free el servicio se duerme y despierta a menudo).</p>
  */
 @Service
 public class TokenService {
 
     private static final Logger log = LoggerFactory.getLogger(TokenService.class);
+    static final String PARAMETRO_CLAVE = "jwt.secret";
     private static final Base64.Encoder B64 = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder B64D = Base64.getUrlDecoder();
     private static final String CABECERA = B64.encodeToString(
             "{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final byte[] clave;
+    private final String secretoConfigurado;
     private final long minutosVigencia;
+    private final ParametroSistemaRepository parametros;
+    private byte[] clave;
 
     public TokenService(@Value("${app.jwt.secret:}") String secreto,
-                        @Value("${app.jwt.expiration-minutes:480}") long minutosVigencia) {
-        if (secreto == null || secreto.isBlank()) {
-            this.clave = new byte[32];
-            new SecureRandom().nextBytes(this.clave);
-            log.warn("JWT_SECRET no está definido: se usa una clave aleatoria temporal.");
-        } else {
-            if (secreto.length() < 32) {
+                        @Value("${app.jwt.expiration-minutes:480}") long minutosVigencia,
+                        ParametroSistemaRepository parametros) {
+        this.secretoConfigurado = secreto;
+        this.minutosVigencia = minutosVigencia;
+        this.parametros = parametros;
+    }
+
+    @PostConstruct
+    void inicializarClave() {
+        if (secretoConfigurado != null && !secretoConfigurado.isBlank()) {
+            if (secretoConfigurado.length() < 32) {
                 log.warn("JWT_SECRET tiene menos de 32 caracteres; use una clave más larga.");
             }
-            this.clave = secreto.getBytes(StandardCharsets.UTF_8);
+            clave = secretoConfigurado.getBytes(StandardCharsets.UTF_8);
+            return;
         }
-        this.minutosVigencia = minutosVigencia;
+        clave = parametros.findById(PARAMETRO_CLAVE)
+                .map(p -> Base64.getDecoder().decode(p.getValor()))
+                .orElseGet(this::generarYGuardarClave);
+    }
+
+    private byte[] generarYGuardarClave() {
+        byte[] nueva = new byte[48];
+        new SecureRandom().nextBytes(nueva);
+        parametros.save(new ParametroSistema(PARAMETRO_CLAVE, Base64.getEncoder().encodeToString(nueva)));
+        log.info("JWT_SECRET no está definido: se generó una clave de sesión y se guardó en la base de datos.");
+        return nueva;
     }
 
     /** Datos de la sesión contenidos en un token válido. */
