@@ -30,6 +30,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(NoAutorizadoException.class)
+    public ResponseEntity<Map<String, String>> noAutorizado(NoAutorizadoException ex) {
+        return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(ReglaNegocioException.class)
     public ResponseEntity<Map<String, String>> reglaNegocio(ReglaNegocioException ex) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());

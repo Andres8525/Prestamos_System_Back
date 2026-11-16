@@ -1,11 +1,28 @@
 package com.example.cobro.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Cuenta de acceso al sistema (prestamista / administrador de la cartera).
+ * La contraseña heredada de {@link Usuario} se guarda siempre como hash, nunca en texto plano.
+ */
+@Entity
+@Table(name = "administradores",
+       uniqueConstraints = @UniqueConstraint(name = "uk_admin_email", columnNames = "email"))
 public class Administrador extends Usuario {
 
     private String codigoAdmin;
+
+    @Column(nullable = false)
+    private LocalDateTime fechaRegistro = LocalDateTime.now();
+
+    private LocalDateTime ultimoAcceso;
 
     public Administrador() {}
 
@@ -25,8 +42,11 @@ public class Administrador extends Usuario {
     public List<String> getPermisos() {
         return Arrays.asList(
             "GESTIONAR_CLIENTES",
+            "GESTIONAR_COBRADORES",
             "CREAR_PRESTAMOS",
             "REGISTRAR_PAGOS",
+            "CUADRAR_CAJA",
+            "GESTIONAR_TIENDA",
             "VER_PANEL",
             "GENERAR_REPORTES"
         );
@@ -41,10 +61,12 @@ public class Administrador extends Usuario {
                ", codigoAdmin=" + codigoAdmin + "}";
     }
 
-    public void gestionarClientes() {}
-
-    public void generarReporte() {}
-
     public String getCodigoAdmin() { return codigoAdmin; }
     public void setCodigoAdmin(String codigoAdmin) { this.codigoAdmin = codigoAdmin; }
+
+    public LocalDateTime getFechaRegistro() { return fechaRegistro; }
+    public void setFechaRegistro(LocalDateTime fechaRegistro) { this.fechaRegistro = fechaRegistro; }
+
+    public LocalDateTime getUltimoAcceso() { return ultimoAcceso; }
+    public void setUltimoAcceso(LocalDateTime ultimoAcceso) { this.ultimoAcceso = ultimoAcceso; }
 }
