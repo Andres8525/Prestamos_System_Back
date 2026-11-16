@@ -5,6 +5,7 @@ import com.example.cobro.model.*;
 import com.example.cobro.repository.AbonoRepository;
 import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.repository.PrestamoRepository;
+import com.example.cobro.estructuras.IndiceAgrupado;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,10 +52,14 @@ public class RutaCobroService {
                         Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(p -> p.getCliente().getNombre()));
 
+        IndiceAgrupado<Long, Pago> pendientes = IndiceAgrupado.de(
+                pagoRepository.findByPrestamo_IdInAndFechaPagoIsNullOrderByPrestamo_IdAscNumeroAsc(
+                        prestamos.stream().map(Prestamo::getId).toList()),
+                Pago::getPrestamoId);
         List<RutaCobroDTO.Parada> paradas = new ArrayList<>();
         int orden = 1;
         for (Prestamo prestamo : prestamos) {
-            paradas.add(construirParada(orden++, prestamo, fecha,
+            paradas.add(construirParada(orden++, prestamo, pendientes.de(prestamo.getId()), fecha,
                     abonadoPorPrestamo.getOrDefault(prestamo.getId(), 0.0)));
         }
         // Abonos de préstamos que ya quedaron cancelados hoy también cuentan como recaudo.
@@ -69,9 +74,8 @@ public class RutaCobroService {
                 paradas);
     }
 
-    private RutaCobroDTO.Parada construirParada(int orden, Prestamo prestamo, LocalDate fecha, double abonadoHoy) {
-        List<Pago> pendientes = pagoRepository.findByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(prestamo.getId());
-
+    private RutaCobroDTO.Parada construirParada(int orden, Prestamo prestamo, List<Pago> pendientes,
+                                                LocalDate fecha, double abonadoHoy) {
         double exigible = pendientes.stream()
                 .filter(c -> !c.getFechaProgramada().isAfter(fecha))
                 .mapToDouble(Pago::saldo).sum();
