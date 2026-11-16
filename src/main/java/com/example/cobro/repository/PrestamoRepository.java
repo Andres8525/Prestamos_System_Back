@@ -17,6 +17,14 @@ public interface PrestamoRepository extends JpaRepository<Prestamo, Long> {
 
     List<Prestamo> findByCobrador_Id(Long cobradorId);
 
+    /**
+     * Préstamos activos de la ruta de un cobrador: los asignados directamente al cobrador
+     * o, si el préstamo no tiene cobrador, los de clientes asignados a su ruta.
+     */
+    @Query("SELECT p FROM Prestamo p JOIN p.cliente cl LEFT JOIN p.cobrador c LEFT JOIN cl.cobrador cc " +
+           "WHERE p.estado <> :excluido AND (c.id = :cobradorId OR (c IS NULL AND cc.id = :cobradorId))")
+    List<Prestamo> findActivosDeRuta(@Param("cobradorId") Long cobradorId, @Param("excluido") EstadoPago excluido);
+
     List<Prestamo> findByCobrador_IdAndFechaInicio(Long cobradorId, java.time.LocalDate fechaInicio);
 
     @Query("SELECT COALESCE(SUM(p.montoTotal), 0) FROM Prestamo p " +
