@@ -75,6 +75,14 @@ public class GlobalExceptionHandler {
                 "La operación viola la integridad de los datos (registro duplicado o con dependencias)");
     }
 
+    /** Fallo al llamar a Groq: 429 si es el límite de uso, 503 en cualquier otro caso (servicio externo). */
+    @ExceptionHandler(com.example.cobro.groq.GroqClient.GroqException.class)
+    public ResponseEntity<Map<String, String>> groq(com.example.cobro.groq.GroqClient.GroqException ex) {
+        log.warn("Groq: {}", ex.getMessage());
+        return error(ex.getCodigoHttp() == 429 ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE,
+                ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> generico(Exception ex) {
         log.error("Error no controlado", ex);
