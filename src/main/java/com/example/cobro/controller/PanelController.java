@@ -12,11 +12,27 @@ import org.springframework.web.bind.annotation.*;
 public class PanelController {
 
     @Autowired
+    private com.example.cobro.repository.PagoRepository pagoRepository;
+
+    @Autowired
     private PanelService panelService;
 
     @GetMapping
     public ResponseEntity<Panel> obtenerPanel() {
         return ResponseEntity.ok(panelService.generarPanel());
+    }
+
+    /** Antigüedad de la cartera: cuotas pendientes y saldo agrupados por tramo de días de atraso. */
+    @GetMapping("/antiguedad")
+    public java.util.List<com.example.cobro.estructuras.TramosMora.Resumen> antiguedad() {
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        java.util.List<long[]> pendientes = pagoRepository.findAll().stream()
+                .filter(c -> c.getFechaPago() == null)
+                .map(c -> new long[]{
+                        Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(c.getFechaProgramada(), hoy)),
+                        Math.round(c.saldo() * 100)})
+                .toList();
+        return new com.example.cobro.estructuras.TramosMora().resumir(pendientes);
     }
 
     @GetMapping("/clientes-adeuda")
