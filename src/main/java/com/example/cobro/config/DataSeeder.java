@@ -26,6 +26,7 @@ import java.util.Random;
  * Este historial es el que usa el modelo de scoring para aprender.
  */
 @Component
+@org.springframework.core.annotation.Order(10)
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true")
 public class DataSeeder implements CommandLineRunner {
 
