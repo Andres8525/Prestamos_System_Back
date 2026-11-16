@@ -1,0 +1,27 @@
+# Respaldo externo del keep-alive: llama al backend cada 10 minutos para que Render no lo suspenda.
+# Configure en GitHub → Settings → Secrets and variables → Actions → Variables:
+#   BACKEND_URL = https://<su-servicio>.onrender.com   (sin barra final)
+# Nota: GitHub puede retrasar los cron unos minutos y los pausa si el repositorio pasa 60 días sin actividad.
+name: Keep-alive backend
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Despertar y verificar el backend
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://cobro-backend.onrender.com' }}
+        run: |
+          for intento in 1 2 3; do
+            codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$BACKEND_URL/api/health" || true)
+            echo "Intento $intento: HTTP $codigo"
+            if [ "$codigo" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "::warning::El backend no respondió en $BACKEND_URL"
