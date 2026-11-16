@@ -17,6 +17,11 @@ public class Prestamo {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Cliente cliente;
 
+    /** Cobrador que desembolsó el préstamo y es responsable de su recaudo. */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "cobrador_id")
+    private Cobrador cobrador;
+
     @Column(nullable = false)
     private Double monto;
 
@@ -58,6 +63,9 @@ public class Prestamo {
 
     public Cliente getCliente() { return cliente; }
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
+
+    public Cobrador getCobrador() { return cobrador; }
+    public void setCobrador(Cobrador cobrador) { this.cobrador = cobrador; }
 
     public Double getMonto() { return monto; }
     public void setMonto(Double monto) { this.monto = monto; }

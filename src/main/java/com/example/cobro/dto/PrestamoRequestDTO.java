@@ -30,6 +30,9 @@ public class PrestamoRequestDTO {
     @Max(value = 365, message = "El número de cuotas no puede superar 365")
     private Integer numeroCuotas;
 
+    /** Cobrador responsable. Si es null se usa el cobrador asignado al cliente. */
+    private Long cobradorId;
+
     public PrestamoRequestDTO() {}
 
     public PrestamoRequestDTO(Long clienteId, Double monto, TipoLiquidacion tipoLiquidacion) {
@@ -43,6 +46,9 @@ public class PrestamoRequestDTO {
 
     public Double getMonto() { return monto; }
     public void setMonto(Double monto) { this.monto = monto; }
+
+    public Long getCobradorId() { return cobradorId; }
+    public void setCobradorId(Long cobradorId) { this.cobradorId = cobradorId; }
 
     public Double getTasaInteres() { return tasaInteres; }
     public void setTasaInteres(Double tasaInteres) { this.tasaInteres = tasaInteres; }

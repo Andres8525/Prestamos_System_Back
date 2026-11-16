@@ -49,6 +49,11 @@ public class PrestamoController {
         return map(prestamoService.listarPorCliente(clienteId));
     }
 
+    @GetMapping("/cobrador/{cobradorId}")
+    public List<PrestamoResponseDTO> listarPorCobrador(@PathVariable Long cobradorId) {
+        return map(prestamoService.listarPorCobrador(cobradorId));
+    }
+
     @GetMapping("/estado/al-dia")
     public List<PrestamoResponseDTO> clientesAlDia() {
         return map(prestamoService.listarPorEstado(EstadoPago.AL_DIA));

@@ -10,6 +10,8 @@ public class PrestamoResponseDTO {
     private Long id;
     private Long clienteId;
     private String clienteNombre;
+    private Long cobradorId;
+    private String cobradorNombre;
     private Double monto;
     private Double tasaInteres;
     private Double montoTotal;
@@ -28,6 +30,10 @@ public class PrestamoResponseDTO {
         dto.setId(prestamo.getId());
         dto.setClienteId(prestamo.getClienteId());
         dto.setClienteNombre(prestamo.getCliente() != null ? prestamo.getCliente().getNombre() : null);
+        if (prestamo.getCobrador() != null) {
+            dto.setCobradorId(prestamo.getCobrador().getId());
+            dto.setCobradorNombre(prestamo.getCobrador().getNombre());
+        }
         dto.setMonto(prestamo.getMonto());
         dto.setTasaInteres(prestamo.getTasaInteres());
         dto.setMontoTotal(prestamo.getMontoTotal());
@@ -50,6 +56,12 @@ public class PrestamoResponseDTO {
 
     public String getClienteNombre() { return clienteNombre; }
     public void setClienteNombre(String clienteNombre) { this.clienteNombre = clienteNombre; }
+
+    public Long getCobradorId() { return cobradorId; }
+    public void setCobradorId(Long cobradorId) { this.cobradorId = cobradorId; }
+
+    public String getCobradorNombre() { return cobradorNombre; }
+    public void setCobradorNombre(String cobradorNombre) { this.cobradorNombre = cobradorNombre; }
 
     public Double getMonto() { return monto; }
     public void setMonto(Double monto) { this.monto = monto; }

@@ -3,6 +3,8 @@ package com.example.cobro.service;
 import com.example.cobro.dto.PrestamoRequestDTO;
 import com.example.cobro.dto.SimulacionPrestamoDTO;
 import com.example.cobro.exception.RecursoNoEncontradoException;
+import com.example.cobro.exception.ReglaNegocioException;
+import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.model.*;
 import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.PagoRepository;
@@ -30,6 +32,9 @@ public class PrestamoService {
     @Autowired
     private PagoRepository pagoRepository;
 
+    @Autowired
+    private CobradorRepository cobradorRepository;
+
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         return crearPrestamo(new PrestamoRequestDTO(clienteId, monto, tipo), LocalDate.now());
     }
@@ -54,6 +59,7 @@ public class PrestamoService {
 
         Prestamo prestamo = new Prestamo();
         prestamo.setCliente(cliente);
+        prestamo.setCobrador(resolverCobrador(dto.getCobradorId(), cliente));
         prestamo.setMonto(calculo.monto());
         prestamo.setTasaInteres(calculo.tasaInteres());
         prestamo.setMontoTotal(calculo.montoTotal());
@@ -85,6 +91,21 @@ public class PrestamoService {
             cuotas.add(pago);
         }
         pagoRepository.saveAll(cuotas);
+    }
+
+    private Cobrador resolverCobrador(Long cobradorId, Cliente cliente) {
+        if (cobradorId == null) return cliente.getCobrador();
+        Cobrador cobrador = cobradorRepository.findById(cobradorId)
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Cobrador", cobradorId));
+        if (!cobrador.isActivo()) {
+            throw new ReglaNegocioException("El cobrador " + cobrador.getNombre() + " está inactivo");
+        }
+        return cobrador;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Prestamo> listarPorCobrador(Long cobradorId) {
+        return prestamoRepository.findByCobrador_Id(cobradorId);
     }
 
     @Transactional(readOnly = true)

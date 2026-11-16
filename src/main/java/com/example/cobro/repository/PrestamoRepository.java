@@ -15,6 +15,10 @@ public interface PrestamoRepository extends JpaRepository<Prestamo, Long> {
 
     List<Prestamo> findByEstado(EstadoPago estado);
 
+    List<Prestamo> findByCobrador_Id(Long cobradorId);
+
+    List<Prestamo> findByCobrador_IdAndFechaInicio(Long cobradorId, java.time.LocalDate fechaInicio);
+
     @Query("SELECT COALESCE(SUM(p.montoTotal), 0) FROM Prestamo p " +
            "WHERE YEAR(p.fechaInicio) = :year AND MONTH(p.fechaInicio) = :month")
     Double sumMontoTotalByMes(@Param("year") int year, @Param("month") int month);
