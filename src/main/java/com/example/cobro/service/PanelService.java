@@ -30,7 +30,7 @@ public class PanelService {
         PanelItem itemPendientes = new PanelItem(2L, "CLIENTES_PENDIENTES", (double) totalPendientes, "#FFC107");
         panel.getItems().add(itemPendientes);
 
-        long pagosPendientes = pagoRepository.countByEstado(EstadoPago.AL_DIA);
+        long pagosPendientes = pagoRepository.countByFechaPagoIsNull();
         PanelItem itemPagos = new PanelItem(3L, "PAGOS_PENDIENTES", (double) pagosPendientes, "#17A2B8");
         panel.getItems().add(itemPagos);
 

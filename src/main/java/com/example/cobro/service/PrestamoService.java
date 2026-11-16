@@ -137,7 +137,7 @@ public class PrestamoService {
 
         for (Prestamo prestamo : prestamos) {
             Optional<Pago> proximoPago = pagoRepository
-                    .findFirstByPrestamo_IdAndEstadoOrderByNumeroAsc(prestamo.getId(), EstadoPago.AL_DIA);
+                    .findFirstByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(prestamo.getId());
 
             if (proximoPago.isEmpty()) {
                 // Todos los pagos realizados
