@@ -35,6 +35,15 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(RiesgoCreditoException.class)
+    public ResponseEntity<Map<String, Object>> riesgoCredito(RiesgoCreditoException ex) {
+        Map<String, Object> cuerpo = new LinkedHashMap<>();
+        cuerpo.put("error", ex.getMessage());
+        cuerpo.put("requiereConfirmacion", true);
+        cuerpo.put("scoring", ex.getScoring());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(cuerpo);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> validacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new LinkedHashMap<>();

@@ -33,6 +33,9 @@ public class PrestamoRequestDTO {
     /** Cobrador responsable. Si es null se usa el cobrador asignado al cliente. */
     private Long cobradorId;
 
+    /** Aprueba la renovación aunque el modelo de scoring indique riesgo ALTO. */
+    private Boolean forzarAprobacion;
+
     public PrestamoRequestDTO() {}
 
     public PrestamoRequestDTO(Long clienteId, Double monto, TipoLiquidacion tipoLiquidacion) {
@@ -46,6 +49,10 @@ public class PrestamoRequestDTO {
 
     public Double getMonto() { return monto; }
     public void setMonto(Double monto) { this.monto = monto; }
+
+    public boolean isForzarAprobacion() { return Boolean.TRUE.equals(forzarAprobacion); }
+    public Boolean getForzarAprobacion() { return forzarAprobacion; }
+    public void setForzarAprobacion(Boolean forzarAprobacion) { this.forzarAprobacion = forzarAprobacion; }
 
     public Long getCobradorId() { return cobradorId; }
     public void setCobradorId(Long cobradorId) { this.cobradorId = cobradorId; }

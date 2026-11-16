@@ -24,6 +24,9 @@ public class PrestamoResponseDTO {
     private LocalDate fechaInicio;
     private LocalDate fechaVencimiento;
     private EstadoPago estado;
+    private Double probabilidadDefault;
+    private String nivelRiesgo;
+    private Boolean aprobadoConAlerta;
     private Double totalPagado;
     private Double saldoPendiente;
     private Integer cuotasPagadas;
@@ -65,6 +68,9 @@ public class PrestamoResponseDTO {
         dto.setFechaInicio(prestamo.getFechaInicio());
         dto.setFechaVencimiento(prestamo.getFechaVencimiento());
         dto.setEstado(prestamo.getEstado());
+        dto.setProbabilidadDefault(prestamo.getProbabilidadDefault());
+        dto.setNivelRiesgo(prestamo.getNivelRiesgo());
+        dto.setAprobadoConAlerta(prestamo.getAprobadoConAlerta());
         return dto;
     }
 
@@ -113,6 +119,15 @@ public class PrestamoResponseDTO {
     public void setFechaVencimiento(LocalDate fechaVencimiento) {
         this.fechaVencimiento = fechaVencimiento;
     }
+
+    public Double getProbabilidadDefault() { return probabilidadDefault; }
+    public void setProbabilidadDefault(Double probabilidadDefault) { this.probabilidadDefault = probabilidadDefault; }
+
+    public String getNivelRiesgo() { return nivelRiesgo; }
+    public void setNivelRiesgo(String nivelRiesgo) { this.nivelRiesgo = nivelRiesgo; }
+
+    public Boolean getAprobadoConAlerta() { return aprobadoConAlerta; }
+    public void setAprobadoConAlerta(Boolean aprobadoConAlerta) { this.aprobadoConAlerta = aprobadoConAlerta; }
 
     public Double getTotalPagado() { return totalPagado; }
     public void setTotalPagado(Double totalPagado) { this.totalPagado = totalPagado; }

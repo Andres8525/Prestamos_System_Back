@@ -51,6 +51,15 @@ public class Prestamo {
     @Column(nullable = false)
     private EstadoPago estado;
 
+    /** Probabilidad de incumplimiento estimada por la IA al aprobar el préstamo. */
+    private Double probabilidadDefault;
+
+    /** Nivel de riesgo (BAJO / MEDIO / ALTO) estimado al aprobar el préstamo. */
+    private String nivelRiesgo;
+
+    /** Indica que se aprobó pese a una alerta de riesgo ALTO. */
+    private Boolean aprobadoConAlerta;
+
     public Prestamo() {}
 
     // Campo calculado para el frontend
@@ -90,6 +99,15 @@ public class Prestamo {
 
     public LocalDate getFechaVencimiento() { return fechaVencimiento; }
     public void setFechaVencimiento(LocalDate fechaVencimiento) { this.fechaVencimiento = fechaVencimiento; }
+
+    public Double getProbabilidadDefault() { return probabilidadDefault; }
+    public void setProbabilidadDefault(Double probabilidadDefault) { this.probabilidadDefault = probabilidadDefault; }
+
+    public String getNivelRiesgo() { return nivelRiesgo; }
+    public void setNivelRiesgo(String nivelRiesgo) { this.nivelRiesgo = nivelRiesgo; }
+
+    public Boolean getAprobadoConAlerta() { return aprobadoConAlerta; }
+    public void setAprobadoConAlerta(Boolean aprobadoConAlerta) { this.aprobadoConAlerta = aprobadoConAlerta; }
 
     public EstadoPago getEstado() { return estado; }
     public void setEstado(EstadoPago estado) { this.estado = estado; }

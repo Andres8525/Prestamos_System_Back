@@ -4,6 +4,10 @@ import com.example.cobro.dto.PrestamoRequestDTO;
 import com.example.cobro.dto.SimulacionPrestamoDTO;
 import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.exception.ReglaNegocioException;
+import com.example.cobro.exception.RiesgoCreditoException;
+import com.example.cobro.ia.CreditScoringService;
+import com.example.cobro.ia.NivelRiesgo;
+import com.example.cobro.ia.ScoringDTO;
 import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.model.*;
 import com.example.cobro.repository.AbonoRepository;
@@ -42,6 +46,9 @@ public class PrestamoService {
     @Autowired
     private CajaService cajaService;
 
+    @Autowired
+    private CreditScoringService creditScoringService;
+
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         return crearPrestamo(new PrestamoRequestDTO(clienteId, monto, tipo), LocalDate.now());
     }
@@ -64,6 +71,14 @@ public class PrestamoService {
 
         SimulacionPrestamoDTO calculo = simular(dto, fechaInicio);
 
+        // IA: antes de aprobar una RENOVACIÓN se evalúa el riesgo de incumplimiento del cliente.
+        boolean esRenovacion = !prestamoRepository.findByCliente_Id(cliente.getId()).isEmpty();
+        ScoringDTO scoring = creditScoringService.evaluarCliente(cliente.getId());
+        boolean riesgoAlto = scoring.nivelRiesgo() == NivelRiesgo.ALTO;
+        if (esRenovacion && riesgoAlto && !dto.isForzarAprobacion()) {
+            throw new RiesgoCreditoException(scoring);
+        }
+
         Prestamo prestamo = new Prestamo();
         prestamo.setCliente(cliente);
         prestamo.setCobrador(resolverCobrador(dto.getCobradorId(), cliente));
@@ -78,6 +93,9 @@ public class PrestamoService {
         prestamo.setFechaInicio(fechaInicio);
         prestamo.setFechaVencimiento(calculo.fechaVencimiento());
         prestamo.setEstado(EstadoPago.AL_DIA);
+        prestamo.setProbabilidadDefault(scoring.probabilidadDefault());
+        prestamo.setNivelRiesgo(scoring.nivelRiesgo().name());
+        prestamo.setAprobadoConAlerta(esRenovacion && riesgoAlto);
 
         Prestamo guardado = prestamoRepository.save(prestamo);
         generarCuotas(guardado, PlanLiquidacion.de(calculo.tipoLiquidacion()),
