@@ -18,7 +18,8 @@ public final class GroqDTO {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Peticion(String model, List<Mensaje> messages, Double temperature,
-                           @JsonProperty("max_tokens") Integer maxTokens) {}
+                           @JsonProperty("max_tokens") Integer maxTokens,
+                           @JsonProperty("reasoning_effort") String reasoningEffort) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Respuesta(String model, List<Opcion> choices, Uso usage) {

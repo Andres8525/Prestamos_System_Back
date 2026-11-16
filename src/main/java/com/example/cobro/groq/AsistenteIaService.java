@@ -37,6 +37,10 @@ public class AsistenteIaService {
             Usa solo los datos que se te entregan; si falta información dilo, no inventes cifras.
             No des asesoría legal. Cuando recomiendes acciones, que sean concretas para el cobrador o el analista.""";
 
+    /** El chat muestra texto sin formato: se pide a Groq que no use Markdown. */
+    static final String TEXTO_PLANO =
+            "\n\nResponde en texto plano: sin tablas, negritas ni encabezados Markdown; para listas usa guiones.";
+
     public enum Origen { GROQ, LOCAL }
 
     public record Respuesta(String texto, Origen origen, String modelo, Integer tokens) {}
@@ -57,6 +61,7 @@ public class AsistenteIaService {
     }
 
     public Estado estado() {
+        groq.verificarModelo();
         return new Estado(groq.configurado(), groq.modelo(), "Groq");
     }
 
@@ -67,7 +72,8 @@ public class AsistenteIaService {
         if (!groq.configurado()) {
             return new Respuesta(explicacionLocal(s), Origen.LOCAL, null, null);
         }
-        return consultar("Explica al analista el riesgo de este cliente (datos anónimos) y sugiere 2 acciones:\n" + datos);
+        return consultar("Explica al analista el riesgo de este cliente (datos anónimos) y sugiere 2 acciones:\n" + datos
+                + TEXTO_PLANO);
     }
 
     /** Pregunta libre sobre la cartera; se responde con el resumen agregado de la cartera como contexto. */
@@ -82,7 +88,8 @@ public class AsistenteIaService {
             return new Respuesta("El asistente con IA generativa no está activo (falta GROQ_API_KEY en el servidor). "
                     + "Resumen actual de la cartera:\n" + contexto, Origen.LOCAL, null, null);
         }
-        return consultar("Datos actuales de la cartera:\n" + contexto + "\n\nPregunta del analista: " + limpia);
+        return consultar("Datos actuales de la cartera:\n" + contexto + "\n\nPregunta del analista: " + limpia
+                + TEXTO_PLANO);
     }
 
     /** Informe ejecutivo de la cartera (lo usa el worker INFORME_IA). */

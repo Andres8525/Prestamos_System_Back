@@ -33,7 +33,8 @@ En Render se configuran en *Environment* del Web Service.
 | `WORKERS_THREADS` | hilos del pool de workers (por defecto 2) |
 | `GRPC_ENABLED` / `GRPC_PORT` | servidor gRPC (por defecto activo en el puerto 9090) |
 | `GROQ_API_KEY` | clave de [Groq](https://console.groq.com/keys) para el asistente de IA. Sin ella, el asistente responde en modo local |
-| `GROQ_MODEL` | modelo de Groq (por defecto `llama-3.3-70b-versatile`) |
+| `GROQ_MODEL` | modelo de Groq (por defecto `openai/gpt-oss-120b`; Groq retiró `llama-3.3-70b-versatile`) |
+| `GROQ_FALLBACK_MODELS` | modelos de respaldo si el principal no está disponible (por defecto `openai/gpt-oss-20b,qwen/qwen3.8-27b`) |
 | `GROQ_RATE_LIMIT` | consultas al asistente por usuario y minuto (por defecto 10) |
 
 Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.profiles=prod`

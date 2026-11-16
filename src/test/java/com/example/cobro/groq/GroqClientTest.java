@@ -62,9 +62,53 @@ class GroqClientTest {
         assertEquals("Bearer gsk_prueba", autorizacion.get());
 
         Map<?, ?> enviado = new ObjectMapper().readValue(cuerpoRecibido.get(), Map.class);
-        assertEquals("llama-3.3-70b-versatile", enviado.get("model"), "modelo por defecto");
+        assertEquals(GroqProperties.MODELO_POR_DEFECTO, enviado.get("model"), "modelo por defecto");
+        assertEquals("low", enviado.get("reasoning_effort"), "los modelos gpt-oss razonan con esfuerzo bajo");
         assertEquals(100, enviado.get("max_tokens"));
         assertEquals("user", ((Map<?, ?>) ((List<?>) enviado.get("messages")).get(0)).get("role"));
+    }
+
+    @Test
+    void siGroqRetiraElModeloUsaElDeRespaldo() throws Exception {
+        List<String> modelosPedidos = new java.util.concurrent.CopyOnWriteArrayList<>();
+        falso.removeContext("/openai/v1/chat/completions");
+        falso.createContext("/openai/v1/chat/completions", ex -> {
+            String cuerpo = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            String modelo = (String) new ObjectMapper().readValue(cuerpo, Map.class).get("model");
+            modelosPedidos.add(modelo);
+            boolean retirado = modelo.equals("llama-retirado");
+            byte[] b = (retirado
+                    ? "{\"error\":{\"message\":\"The model does not exist\",\"code\":\"model_not_found\"}}"
+                    : respuesta).getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(retirado ? 404 : 200, b.length);
+            ex.getResponseBody().write(b);
+            ex.close();
+        });
+        String url = "http://127.0.0.1:" + falso.getAddress().getPort() + "/openai/v1";
+        GroqClient groq = new GroqClient(new GroqProperties("gsk_prueba", "llama-retirado", List.of("respaldo-1"),
+                url, Duration.ofSeconds(5), 100, 0.2, null), new ObjectMapper());
+
+        assertEquals("  Riesgo bajo: buen pagador.  ", groq.chat(List.of(GroqDTO.Mensaje.usuario("hola"))).texto());
+        assertEquals(GroqProperties.MODELO_POR_DEFECTO, groq.modelo());
+        groq.chat(List.of(GroqDTO.Mensaje.usuario("otra")));
+        assertEquals(List.of("llama-retirado", GroqProperties.MODELO_POR_DEFECTO, GroqProperties.MODELO_POR_DEFECTO), modelosPedidos,
+                "después del cambio ya no se reintenta el modelo retirado");
+    }
+
+    @Test
+    void elCatalogoDeGroqFijaElModeloAntesDeLaPrimeraPregunta() {
+        falso.createContext("/openai/v1/models", ex -> {
+            byte[] b = "{\"data\":[{\"id\":\"whisper\"},{\"id\":\"respaldo-1\"}]}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, b.length);
+            ex.getResponseBody().write(b);
+            ex.close();
+        });
+        String url = "http://127.0.0.1:" + falso.getAddress().getPort() + "/openai/v1";
+        GroqClient groq = new GroqClient(new GroqProperties("gsk_prueba", "llama-retirado", List.of("respaldo-1"),
+                url, Duration.ofSeconds(5), 100, 0.2, null), new ObjectMapper());
+        assertEquals("llama-retirado", groq.modelo());
+        groq.verificarModelo();
+        assertEquals("respaldo-1", groq.modelo());
     }
 
     @Test
