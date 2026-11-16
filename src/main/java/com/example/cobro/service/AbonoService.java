@@ -73,7 +73,7 @@ public class AbonoService {
         }
         double saldoObjetivo = cuotasObjetivo.stream().mapToDouble(Pago::saldo).sum();
         if (monto > saldoObjetivo + TOLERANCIA) {
-            throw new ReglaNegocioException(String.format(
+            throw new ReglaNegocioException(String.format(java.util.Locale.ROOT,
                     "El abono (%.2f) excede el saldo pendiente (%.2f)", monto, saldoObjetivo));
         }
 
