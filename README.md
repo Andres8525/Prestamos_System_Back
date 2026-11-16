@@ -77,6 +77,8 @@ Toda la API requiere `Authorization: Bearer <token>`, excepto `/api/auth/verific
 | Machine Learning | `GET /api/ml/modelo`, `POST /api/ml/entrenar`, `GET /api/ml/entrenamientos`, `GET /api/ml/predicciones/cliente/{id}`, `POST /api/ml/simular` |
 | Workers | `GET /api/workers/estado`, `GET/POST /api/workers/tareas`, `GET/DELETE /api/workers/tareas/{id}`, `POST /api/workers/tareas/{id}/reintentar`, `GET /api/workers/tareas/{id}/resultado` |
 | gRPC (info) | `GET /api/grpc/info`, `GET /api/grpc/contratos` |
+| Tiempo real | `WS /ws/eventos?token=…&desde=…`, `GET /api/tiempo-real/estado` |
+| Búsqueda | `GET /api/clientes/buscar?q=&limite=`, `GET /api/rutas/cobrador/{id}/priorizada`, `GET /api/panel/antiguedad` |
 | Asistente IA (Groq) | `GET /api/asistente/estado`, `POST /api/asistente/explicar/cliente/{id}`, `POST /api/asistente/preguntar` |
 
 ## Workers (tareas en segundo plano)
@@ -91,6 +93,27 @@ Patrón **productor-consumidor** con cola persistida:
 - `ManejadorTarea` (patrón *Strategy*): un worker por tipo — `RECALCULAR_MORA`, `SCORING_CARTERA`,
   `REENTRENAR_MODELO`, `REPORTE_CARTERA` (CSV descargable) e `INFORME_IA` (informe redactado con Groq).
 - Productores: la API (`POST /api/workers/tareas`), `ProgramadorTareas` (mora cada hora) y el reentrenamiento diario de ML.
+
+## WebSocket (tiempo real)
+
+Canal `/ws/eventos` (Spring WebSocket). El token de sesión va en el parámetro `token` porque el navegador no
+permite cabeceras propias en el handshake; sin token válido la conexión se rechaza con 401.
+
+| Evento | Cuándo |
+|---|---|
+| `ABONO_REGISTRADO` | se confirma un abono (REST o gRPC) |
+| `PRESTAMO_CREADO` | se aprueba un préstamo (incluye nivel de riesgo) |
+| `CAJA_CERRADA` | un cobrador cuadra su caja |
+| `TAREA_ACTUALIZADA` | una tarea de los workers cambia de estado |
+| `MODELO_ENTRENADO` | se reentrena el modelo de ML |
+| `BIENVENIDA`, `LATIDO`, `CONEXIONES` | mensajes de sistema (conexión, latido cada 25 s, usuarios conectados) |
+
+- Los servicios publican un `EventoNegocio` con `ApplicationEventPublisher`; `OyenteEventosNegocio` lo difunde
+  **después del commit** (`@TransactionalEventListener`), así nunca se anuncia algo que terminó en rollback.
+- Cada evento lleva un `id` creciente. Al reconectar, el cliente envía `desde=<último id>` y recibe lo que se perdió
+  (historial circular de los últimos 50).
+- Mensajes del cliente: `{"accion":"ping"}`, `{"accion":"suscribir","tipos":[...]}`, `{"accion":"desuscribir","tipos":[...]}`.
+- En Render funciona sobre el mismo puerto HTTPS (`wss://<servicio>.onrender.com/ws/eventos`).
 
 ## gRPC
 
