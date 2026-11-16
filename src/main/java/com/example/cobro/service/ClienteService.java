@@ -18,6 +18,9 @@ import java.util.Optional;
 public class ClienteService {
 
     @Autowired
+    private BusquedaClientesService busqueda;
+
+    @Autowired
     private ClienteRepository clienteRepository;
 
     @Autowired
@@ -35,7 +38,9 @@ public class ClienteService {
         if (clienteRepository.existsByCedula(cliente.getCedula())) {
             throw new ReglaNegocioException("Ya existe un cliente con la cédula: " + cliente.getCedula());
         }
-        return clienteRepository.save(cliente);
+        Cliente guardado = clienteRepository.save(cliente);
+        busqueda.invalidar();
+        return guardado;
     }
 
     @Transactional(readOnly = true)
@@ -93,7 +98,9 @@ public class ClienteService {
         cliente.setOrdenRuta(datos.getOrdenRuta());
         cliente.setCobrador(resolverCobrador(cobradorId));
 
-        return clienteRepository.save(cliente);
+        Cliente guardado = clienteRepository.save(cliente);
+        busqueda.invalidar();
+        return guardado;
     }
 
     public void eliminarCliente(Long id) {
@@ -105,5 +112,6 @@ public class ClienteService {
                     "No se puede eliminar el cliente porque tiene préstamos registrados");
         }
         clienteRepository.deleteById(id);
+        busqueda.invalidar();
     }
 }
