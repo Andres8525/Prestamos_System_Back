@@ -1,5 +1,7 @@
 package com.example.cobro.service;
 
+import com.example.cobro.exception.RecursoNoEncontradoException;
+import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.model.EstadoPago;
 import com.example.cobro.model.Pago;
 import com.example.cobro.repository.PagoRepository;
@@ -14,6 +16,9 @@ import java.util.Optional;
 @Service
 @Transactional
 public class PagoService {
+
+    /** Días de gracia antes de considerar una cuota como ATRASADA. */
+    public static final int DIAS_GRACIA = 3;
 
     @Autowired
     private PagoRepository pagoRepository;
@@ -33,9 +38,10 @@ public class PagoService {
         return pagoRepository.findByPrestamo_IdOrderByNumeroAsc(prestamoId);
     }
 
+    /** Cuotas que aún no se han pagado. */
     @Transactional(readOnly = true)
     public List<Pago> listarPendientesPorPrestamo(Long prestamoId) {
-        return pagoRepository.findByPrestamo_IdAndEstado(prestamoId, EstadoPago.AL_DIA);
+        return pagoRepository.findByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(prestamoId);
     }
 
     @Transactional(readOnly = true)
@@ -43,47 +49,50 @@ public class PagoService {
         return pagoRepository.findByPrestamo_IdAndFechaPagoIsNotNull(prestamoId);
     }
 
+    /** Cuotas vencidas que siguen sin pagarse. */
     @Transactional(readOnly = true)
     public List<Pago> listarAtrasados() {
-        return pagoRepository.findByEstado(EstadoPago.ATRASADO);
+        return pagoRepository
+                .findByFechaPagoIsNullAndFechaProgramadaBeforeOrderByFechaProgramadaAsc(LocalDate.now());
     }
 
     @Transactional(readOnly = true)
     public long contarPendientes() {
-        return pagoRepository.countByEstado(EstadoPago.AL_DIA);
+        return pagoRepository.countByFechaPagoIsNull();
+    }
+
+    /** Clasifica la puntualidad de un pago según los días transcurridos desde la fecha programada. */
+    public static EstadoPago clasificarPuntualidad(LocalDate fechaProgramada, LocalDate fechaPago) {
+        long diasAtraso = ChronoUnit.DAYS.between(fechaProgramada, fechaPago);
+        if (diasAtraso <= 0) return EstadoPago.AL_DIA;
+        if (diasAtraso <= DIAS_GRACIA) return EstadoPago.PENDIENTE;
+        return EstadoPago.ATRASADO;
     }
 
     public Pago marcarPagoRealizado(Long id) {
         Pago pago = pagoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + id));
-
-        LocalDate hoy = LocalDate.now();
-        long diasAtraso = ChronoUnit.DAYS.between(pago.getFechaProgramada(), hoy);
-
-        pago.setFechaPago(hoy);
-
-        if (diasAtraso <= 0) {
-            pago.setEstado(EstadoPago.AL_DIA);
-        } else if (diasAtraso <= 3) {
-            pago.setEstado(EstadoPago.PENDIENTE);
-        } else {
-            pago.setEstado(EstadoPago.ATRASADO);
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Pago", id));
+        if (pago.getFechaPago() != null) {
+            throw new ReglaNegocioException("La cuota #" + pago.getNumero() + " ya fue pagada");
         }
 
+        LocalDate hoy = LocalDate.now();
+        pago.setFechaPago(hoy);
+        pago.setEstado(clasificarPuntualidad(pago.getFechaProgramada(), hoy));
         return pagoRepository.save(pago);
     }
 
     public Pago actualizarPago(Long id, Pago datos) {
         Pago pago = pagoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Pago no encontrado con ID: " + id));
-        pago.setEstado(datos.getEstado());
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Pago", id));
+        if (datos.getEstado() != null) pago.setEstado(datos.getEstado());
         pago.setFechaPago(datos.getFechaPago());
         return pagoRepository.save(pago);
     }
 
     public void eliminarPago(Long id) {
         if (!pagoRepository.existsById(id)) {
-            throw new RuntimeException("Pago no encontrado con ID: " + id);
+            throw RecursoNoEncontradoException.de("Pago", id);
         }
         pagoRepository.deleteById(id);
     }
