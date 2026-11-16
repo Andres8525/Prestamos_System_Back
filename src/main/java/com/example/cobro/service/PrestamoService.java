@@ -5,6 +5,7 @@ import com.example.cobro.model.*;
 import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.repository.PrestamoRepository;
+import com.example.cobro.service.plan.PlanLiquidacion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,8 +20,6 @@ import java.util.Optional;
 public class PrestamoService {
 
     private static final double TASA_INTERES = 20.0;
-    private static final int CUOTAS_DIARIO = 40;
-    private static final int CUOTAS_SEMANAL = 4;
 
     @Autowired
     private PrestamoRepository prestamoRepository;
@@ -35,6 +34,8 @@ public class PrestamoService {
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> RecursoNoEncontradoException.de("Cliente", clienteId));
 
+        PlanLiquidacion plan = PlanLiquidacion.de(tipo);
+        int numeroCuotas = plan.cuotasPorDefecto();
         double montoTotal = monto * (1 + TASA_INTERES / 100);
         LocalDate hoy = LocalDate.now();
 
@@ -45,47 +46,28 @@ public class PrestamoService {
         prestamo.setMontoTotal(montoTotal);
         prestamo.setTipoLiquidacion(tipo);
         prestamo.setFechaInicio(hoy);
+        prestamo.setFechaVencimiento(plan.fechaVencimiento(hoy, numeroCuotas));
         prestamo.setEstado(EstadoPago.AL_DIA);
 
-        if (tipo == TipoLiquidacion.DIARIO) {
-            prestamo.setFechaVencimiento(hoy.plusDays(CUOTAS_DIARIO));
-        } else {
-            prestamo.setFechaVencimiento(hoy.plusWeeks(CUOTAS_SEMANAL));
-        }
-
         Prestamo guardado = prestamoRepository.save(prestamo);
-        generarCuotas(guardado, montoTotal, tipo, hoy);
+        generarCuotas(guardado, plan, montoTotal, numeroCuotas, hoy);
 
         return guardado;
     }
 
-    private void generarCuotas(Prestamo prestamo, double montoTotal, TipoLiquidacion tipo, LocalDate inicio) {
+    private void generarCuotas(Prestamo prestamo, PlanLiquidacion plan, double montoTotal,
+                               int numeroCuotas, LocalDate inicio) {
         List<Pago> cuotas = new ArrayList<>();
-
-        if (tipo == TipoLiquidacion.DIARIO) {
-            double montoCuota = montoTotal / CUOTAS_DIARIO;
-            for (int i = 1; i <= CUOTAS_DIARIO; i++) {
-                Pago pago = new Pago();
-                pago.setPrestamo(prestamo);
-                pago.setNumero(i);
-                pago.setMonto(montoCuota);
-                pago.setFechaProgramada(inicio.plusDays(i));
-                pago.setEstado(EstadoPago.AL_DIA);
-                cuotas.add(pago);
-            }
-        } else {
-            double montoCuota = montoTotal / CUOTAS_SEMANAL;
-            for (int i = 1; i <= CUOTAS_SEMANAL; i++) {
-                Pago pago = new Pago();
-                pago.setPrestamo(prestamo);
-                pago.setNumero(i);
-                pago.setMonto(montoCuota);
-                pago.setFechaProgramada(inicio.plusWeeks(i));
-                pago.setEstado(EstadoPago.AL_DIA);
-                cuotas.add(pago);
-            }
+        double montoCuota = montoTotal / numeroCuotas;
+        for (int i = 1; i <= numeroCuotas; i++) {
+            Pago pago = new Pago();
+            pago.setPrestamo(prestamo);
+            pago.setNumero(i);
+            pago.setMonto(montoCuota);
+            pago.setFechaProgramada(plan.fechaCuota(inicio, i));
+            pago.setEstado(EstadoPago.AL_DIA);
+            cuotas.add(pago);
         }
-
         pagoRepository.saveAll(cuotas);
     }
 
@@ -121,62 +103,38 @@ public class PrestamoService {
     }
 
     public Prestamo actualizarPrestamo(Long id, Prestamo datos) {
-        Prestamo prestamo = prestamoRepository.findById(id)
-                .orElseThrow(() -> RecursoNoEncontradoException.de("Préstamo", id));
+        Prestamo prestamo = obtenerPrestamoOFallar(id);
         if (datos.getEstado() != null) prestamo.setEstado(datos.getEstado());
         return prestamoRepository.save(prestamo);
     }
 
     public void eliminarPrestamo(Long id) {
-        Prestamo prestamo = prestamoRepository.findById(id)
-                .orElseThrow(() -> RecursoNoEncontradoException.de("Préstamo", id));
+        Prestamo prestamo = obtenerPrestamoOFallar(id);
         pagoRepository.deleteAll(pagoRepository.findByPrestamo_IdOrderByNumeroAsc(id));
         prestamoRepository.delete(prestamo);
     }
 
     /**
-     * Recalcula el estado de todos los préstamos activos según los días de atraso
-     * de la próxima cuota pendiente.
+     * Recalcula el estado de un préstamo según los días de atraso de la cuota impaga más antigua,
+     * usando la tolerancia definida por su plan de liquidación.
      */
-    public void actualizarEstados() {
-        List<Prestamo> prestamos = prestamoRepository.findAll();
-        LocalDate hoy = LocalDate.now();
+    public Prestamo recalcularEstado(Prestamo prestamo, LocalDate hoy) {
+        Optional<Pago> proximoPago = pagoRepository
+                .findFirstByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(prestamo.getId());
 
-        for (Prestamo prestamo : prestamos) {
-            Optional<Pago> proximoPago = pagoRepository
-                    .findFirstByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(prestamo.getId());
-
-            if (proximoPago.isEmpty()) {
-                // Todos los pagos realizados
-                prestamo.setEstado(EstadoPago.AL_DIA);
-                prestamoRepository.save(prestamo);
-                continue;
-            }
-
+        EstadoPago nuevoEstado;
+        if (proximoPago.isEmpty()) {
+            nuevoEstado = EstadoPago.AL_DIA;
+        } else {
             long diasAtraso = ChronoUnit.DAYS.between(proximoPago.get().getFechaProgramada(), hoy);
-
-            EstadoPago nuevoEstado;
-            if (prestamo.getTipoLiquidacion() == TipoLiquidacion.DIARIO) {
-                if (diasAtraso <= 0) {
-                    nuevoEstado = EstadoPago.AL_DIA;
-                } else if (diasAtraso <= 3) {
-                    nuevoEstado = EstadoPago.PENDIENTE;
-                } else {
-                    nuevoEstado = EstadoPago.ATRASADO;
-                }
-            } else {
-                // SEMANAL: rojo directamente si 7+ días
-                if (diasAtraso <= 0) {
-                    nuevoEstado = EstadoPago.AL_DIA;
-                } else if (diasAtraso < 7) {
-                    nuevoEstado = EstadoPago.PENDIENTE;
-                } else {
-                    nuevoEstado = EstadoPago.ATRASADO;
-                }
-            }
-
-            prestamo.setEstado(nuevoEstado);
-            prestamoRepository.save(prestamo);
+            nuevoEstado = PlanLiquidacion.de(prestamo.getTipoLiquidacion()).clasificar(diasAtraso);
         }
+        prestamo.setEstado(nuevoEstado);
+        return prestamoRepository.save(prestamo);
+    }
+
+    public void actualizarEstados() {
+        LocalDate hoy = LocalDate.now();
+        prestamoRepository.findAll().forEach(p -> recalcularEstado(p, hoy));
     }
 }
