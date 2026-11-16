@@ -28,6 +28,12 @@ En Render se configuran en *Environment* del Web Service.
 | `JWT_SECRET` | clave para firmar las sesiones (32+ caracteres). Si falta, se genera una y se guarda en la base de datos |
 | `ML_CRON` | horario del reentrenamiento diario del modelo (por defecto `0 0 3 * * *`) |
 | `APP_SEED_ENABLED` | `true` para cargar la cartera de demostración si la base está vacía |
+| `KEEPALIVE_ENABLED` / `KEEPALIVE_URL` | keep-alive (activo por defecto). En Render la URL se toma sola de `RENDER_EXTERNAL_URL` |
+| `WORKERS_THREADS` | hilos del pool de workers (por defecto 2) |
+| `GRPC_ENABLED` / `GRPC_PORT` | servidor gRPC (por defecto activo en el puerto 9090) |
+| `GROQ_API_KEY` | clave de [Groq](https://console.groq.com/keys) para el asistente de IA. Sin ella, el asistente responde en modo local |
+| `GROQ_MODEL` | modelo de Groq (por defecto `llama-3.3-70b-versatile`) |
+| `GROQ_RATE_LIMIT` | consultas al asistente por usuario y minuto (por defecto 10) |
 
 Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.profiles=prod`
 (desde fuera de Render use la *External Database URL*; el hostname interno solo resuelve dentro de Render).
@@ -38,9 +44,24 @@ Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.prof
 2. Ingresar `DATABASE_URL` con la *Internal Database URL* de la base (misma región: Oregon).
 3. Desplegar y verificar `https://<servicio>.onrender.com/api/health` (Health Check Path: `/api/health`).
 
+### Servidor siempre activo (sin esperar a que despierte)
+
+El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico, y el siguiente login espera ≈ 1 minuto.
+El proyecto lo evita con tres mecanismos complementarios:
+
+1. **Keep-alive interno** (`KeepAliveService`): cada 10 minutos el backend llama a su propia URL pública
+   (`RENDER_EXTERNAL_URL`/api/ping). Mientras el proceso esté vivo, nunca llega a los 15 minutos de inactividad.
+2. **Workflow de GitHub Actions** (`.github/workflows/keep-alive.yml`): respaldo externo cada 10 minutos que además
+   **despierta** el servicio si se llegó a suspender (por un reinicio o un deploy). Defina la variable de repositorio
+   `BACKEND_URL` (Settings → Secrets and variables → Actions → Variables) si la URL no es `https://cobro-backend.onrender.com`.
+3. **Frontend**: al abrir la app despierta el servidor y, mientras está abierta, lo llama cada pocos minutos.
+
+> Un servicio gratuito encendido todo el mes consume ≈ 730 de las 750 horas gratuitas mensuales de Render: alcanza
+> para **un** servicio. Para garantía total (sin suspensiones ni límite de horas) use el plan *Starter*.
+
 ## Módulos y endpoints principales
 
-Toda la API requiere `Authorization: Bearer <token>`, excepto `/api/auth/verificar-email`, `/api/auth/login`, `/api/auth/register` y `/api/health`.
+Toda la API requiere `Authorization: Bearer <token>`, excepto `/api/auth/verificar-email`, `/api/auth/login`, `/api/auth/register`, `/api/health` y `/api/ping`.
 
 | Módulo | Endpoints |
 |---|---|
@@ -54,6 +75,60 @@ Toda la API requiere `Authorization: Bearer <token>`, excepto `/api/auth/verific
 | Caja | `GET /api/caja/cobrador/{id}?fecha=`, `POST /api/caja/cierre`, `GET /api/caja/cobrador/{id}/historial` |
 | Scoring IA | `GET /api/scoring/cliente/{id}`, `GET /api/scoring/modelo`, `POST /api/scoring/entrenar` |
 | Machine Learning | `GET /api/ml/modelo`, `POST /api/ml/entrenar`, `GET /api/ml/entrenamientos`, `GET /api/ml/predicciones/cliente/{id}`, `POST /api/ml/simular` |
+| Workers | `GET /api/workers/estado`, `GET/POST /api/workers/tareas`, `GET/DELETE /api/workers/tareas/{id}`, `POST /api/workers/tareas/{id}/reintentar`, `GET /api/workers/tareas/{id}/resultado` |
+| gRPC (info) | `GET /api/grpc/info`, `GET /api/grpc/contratos` |
+| Asistente IA (Groq) | `GET /api/asistente/estado`, `POST /api/asistente/explicar/cliente/{id}`, `POST /api/asistente/preguntar` |
+
+## Workers (tareas en segundo plano)
+
+Patrón **productor-consumidor** con cola persistida:
+
+- `TareaProceso` (tabla `tareas_proceso`) guarda cada tarea, su estado (`PENDIENTE → EN_PROCESO → COMPLETADA | FALLIDA`,
+  o `CANCELADA`), intentos, worker que la atendió, duración y resultado.
+- `ColaTareas`: cola en memoria con prioridad (mayor primero; a igual prioridad, orden de llegada).
+- `WorkerPool`: N hilos (`WORKERS_THREADS`) que consumen la cola. Un fallo se reintenta con espera exponencial
+  (2 s, 4 s, 8 s) hasta 3 intentos. Al reiniciar el servidor, las tareas pendientes vuelven a la cola.
+- `ManejadorTarea` (patrón *Strategy*): un worker por tipo — `RECALCULAR_MORA`, `SCORING_CARTERA`,
+  `REENTRENAR_MODELO`, `REPORTE_CARTERA` (CSV descargable) e `INFORME_IA` (informe redactado con Groq).
+- Productores: la API (`POST /api/workers/tareas`), `ProgramadorTareas` (mora cada hora) y el reentrenamiento diario de ML.
+
+## gRPC
+
+Servidor gRPC embebido en el puerto `GRPC_PORT` (9090), con contratos en `src/main/proto/crediruta/v1`
+(las clases se generan con `protoc` al compilar). Implementa los cuatro patrones de comunicación:
+
+| Servicio | Método | Patrón |
+|---|---|---|
+| `ScoringService` | `EvaluarCliente`, `Simular` | Unario |
+| `ScoringService` | `EvaluarCartera` | Streaming de servidor |
+| `CobranzaService` | `ObtenerRuta` | Streaming de servidor |
+| `CobranzaService` | `RegistrarAbonos` | Streaming de cliente (lote de abonos tomados sin conexión) |
+| `CobranzaService` | `SincronizarCobros` | Bidireccional (confirmación inmediata de cada abono) |
+
+- **Autenticación**: el mismo token de la API REST en el metadato `authorization: Bearer <token>`.
+- **Interceptores**: autenticación y registro de llamadas (métricas por método visibles en `/api/grpc/info`).
+- **Health** estándar (`grpc.health.v1.Health`) y **reflection** (para `grpcurl` o Postman), ambos públicos.
+
+```bash
+grpcurl -plaintext localhost:9090 list
+grpcurl -plaintext -H "authorization: Bearer $TOKEN" -d '{"cobrador_id": 1}'   localhost:9090 crediruta.v1.CobranzaService/ObtenerRuta
+```
+
+> Los navegadores no hablan gRPC nativo, por eso el frontend usa la API REST. En Render solo se publica el puerto
+> HTTP: para consumir gRPC desde fuera se necesita un *Private Service* o un proxy (por ejemplo, Envoy con gRPC-Web).
+
+## Asistente de IA (Groq)
+
+`GroqClient` llama a la API de chat de Groq (compatible con OpenAI) y `AsistenteIaService` la usa para:
+explicar en lenguaje natural el scoring de un cliente, responder preguntas sobre la cartera y redactar el
+informe ejecutivo (worker `INFORME_IA`).
+
+1. Cree una clave en <https://console.groq.com/keys>.
+2. Defínala como `GROQ_API_KEY` en el backend (`.env` en local, *Environment* en Render). **Nunca** en el frontend.
+3. Opcional: `GROQ_MODEL`, `GROQ_RATE_LIMIT`.
+
+A Groq solo se envían indicadores anónimos o agregados (variables de pago, probabilidades, totales); nunca nombres,
+cédulas, teléfonos ni direcciones. Sin clave, el asistente responde con un texto generado localmente.
 
 ## Reglas de negocio
 
