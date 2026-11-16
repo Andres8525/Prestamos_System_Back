@@ -78,6 +78,7 @@ public class PagoService {
 
         LocalDate hoy = LocalDate.now();
         pago.setFechaPago(hoy);
+        pago.setMontoPagado(pago.getMonto());
         pago.setEstado(clasificarPuntualidad(pago.getFechaProgramada(), hoy));
         return pagoRepository.save(pago);
     }

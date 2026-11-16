@@ -10,6 +10,8 @@ public class PagoResponseDTO {
     private Long prestamoId;
     private Integer numero;
     private Double monto;
+    private Double montoPagado;
+    private Double saldo;
     private LocalDate fechaProgramada;
     private LocalDate fechaPago;
     private EstadoPago estado;
@@ -22,6 +24,8 @@ public class PagoResponseDTO {
         dto.setPrestamoId(pago.getPrestamoId());
         dto.setNumero(pago.getNumero());
         dto.setMonto(pago.getMonto());
+        dto.setMontoPagado(pago.montoPagadoEfectivo());
+        dto.setSaldo(pago.saldo());
         dto.setFechaProgramada(pago.getFechaProgramada());
         dto.setFechaPago(pago.getFechaPago());
         dto.setEstado(pago.getEstado());
@@ -39,6 +43,12 @@ public class PagoResponseDTO {
 
     public Double getMonto() { return monto; }
     public void setMonto(Double monto) { this.monto = monto; }
+
+    public Double getMontoPagado() { return montoPagado; }
+    public void setMontoPagado(Double montoPagado) { this.montoPagado = montoPagado; }
+
+    public Double getSaldo() { return saldo; }
+    public void setSaldo(Double saldo) { this.saldo = saldo; }
 
     public LocalDate getFechaProgramada() { return fechaProgramada; }
     public void setFechaProgramada(LocalDate fechaProgramada) {

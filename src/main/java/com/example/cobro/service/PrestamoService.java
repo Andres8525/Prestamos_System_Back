@@ -161,7 +161,7 @@ public class PrestamoService {
 
         EstadoPago nuevoEstado;
         if (proximoPago.isEmpty()) {
-            nuevoEstado = EstadoPago.AL_DIA;
+            nuevoEstado = EstadoPago.PAGADO;
         } else {
             long diasAtraso = ChronoUnit.DAYS.between(proximoPago.get().getFechaProgramada(), hoy);
             nuevoEstado = PlanLiquidacion.de(prestamo.getTipoLiquidacion()).clasificar(diasAtraso);
