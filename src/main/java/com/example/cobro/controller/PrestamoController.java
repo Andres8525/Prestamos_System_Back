@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/prestamos")
-@CrossOrigin(origins = "*")
 public class PrestamoController {
 
     @Autowired

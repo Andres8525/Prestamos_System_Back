@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/panel")
-@CrossOrigin(origins = "*")
 public class PanelController {
 
     @Autowired
