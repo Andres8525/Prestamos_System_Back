@@ -1,5 +1,6 @@
 package com.example.cobro.dto;
 
+import com.example.cobro.model.Cliente;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
@@ -38,4 +39,13 @@ public class ClienteRequestDTO {
 
     public String getTelefono() { return telefono; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
+
+    public Cliente toEntity() {
+        Cliente cliente = new Cliente();
+        cliente.setCedula(cedula != null ? cedula.trim() : null);
+        cliente.setNombre(nombre != null ? nombre.trim() : null);
+        cliente.setDireccion(direccion != null ? direccion.trim() : null);
+        cliente.setTelefono(telefono != null ? telefono.trim() : null);
+        return cliente;
+    }
 }

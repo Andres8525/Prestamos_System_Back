@@ -1,5 +1,7 @@
 package com.example.cobro.service;
 
+import com.example.cobro.exception.RecursoNoEncontradoException;
+import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.model.Cliente;
 import com.example.cobro.repository.ClienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +19,7 @@ public class ClienteService {
 
     public Cliente crearCliente(Cliente cliente) {
         if (clienteRepository.existsByCedula(cliente.getCedula())) {
-            throw new RuntimeException("Ya existe un cliente con la cédula: " + cliente.getCedula());
+            throw new ReglaNegocioException("Ya existe un cliente con la cédula: " + cliente.getCedula());
         }
         return clienteRepository.save(cliente);
     }
@@ -25,6 +27,12 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public Optional<Cliente> obtenerCliente(Long id) {
         return clienteRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public Cliente obtenerClienteOFallar(Long id) {
+        return clienteRepository.findById(id)
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Cliente", id));
     }
 
     @Transactional(readOnly = true)
@@ -38,12 +46,11 @@ public class ClienteService {
     }
 
     public Cliente actualizarCliente(Long id, Cliente datos) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + id));
+        Cliente cliente = obtenerClienteOFallar(id);
 
         if (!cliente.getCedula().equals(datos.getCedula()) &&
             clienteRepository.existsByCedula(datos.getCedula())) {
-            throw new RuntimeException("Ya existe un cliente con la cédula: " + datos.getCedula());
+            throw new ReglaNegocioException("Ya existe un cliente con la cédula: " + datos.getCedula());
         }
 
         cliente.setCedula(datos.getCedula());
@@ -56,7 +63,7 @@ public class ClienteService {
 
     public void eliminarCliente(Long id) {
         if (!clienteRepository.existsById(id)) {
-            throw new RuntimeException("Cliente no encontrado con ID: " + id);
+            throw RecursoNoEncontradoException.de("Cliente", id);
         }
         clienteRepository.deleteById(id);
     }
