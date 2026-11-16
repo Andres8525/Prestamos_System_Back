@@ -1,0 +1,19 @@
+# Blueprint de Render para el backend (repo Prestamos_System_Back).
+# Las credenciales (DATABASE_URL) se ingresan en el panel: sync: false evita guardarlas en git.
+services:
+  - type: web
+    name: cobro-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /api/cobradores
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://*.vercel.app,http://localhost:4200
+      - key: APP_SEED_ENABLED
+        value: "false"
