@@ -25,6 +25,7 @@ En Render se configuran en *Environment* del Web Service.
 | `DATABASE_URL` | *Internal Database URL* de Render (`postgresql://usuario:clave@host/base`) o URL JDBC |
 | `DATABASE_USERNAME` / `DATABASE_PASSWORD` | solo si `DATABASE_URL` no incluye usuario y clave |
 | `ALLOWED_ORIGINS` | orígenes CORS separados por coma (ej. `https://*.vercel.app`) |
+| `JWT_SECRET` | clave para firmar las sesiones (32+ caracteres). Sin ella se genera una aleatoria en cada arranque |
 | `APP_SEED_ENABLED` | `true` para cargar la cartera de demostración si la base está vacía |
 
 Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.profiles=prod`
@@ -34,12 +35,16 @@ Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.prof
 
 1. *New + → Blueprint* y seleccionar este repositorio (usa `render.yaml`), o *New + → Web Service* con runtime **Docker**.
 2. Ingresar `DATABASE_URL` con la *Internal Database URL* de la base (misma región: Oregon).
-3. Desplegar y verificar `https://<servicio>.onrender.com/api/cobradores`.
+3. Desplegar y verificar `https://<servicio>.onrender.com/api/health` (Health Check Path: `/api/health`).
 
 ## Módulos y endpoints principales
 
+Toda la API requiere `Authorization: Bearer <token>`, excepto `/api/auth/login`, `/api/auth/register` y `/api/health`.
+
 | Módulo | Endpoints |
 |---|---|
+| Autenticación | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout` |
+| Tienda (e-commerce) | `GET/POST /api/productos`, `PUT/DELETE /api/productos/{id}`, `POST /api/pedidos`, `GET /api/pedidos[/cliente/{id}]` |
 | Cobradores | `GET/POST /api/cobradores`, `PUT/DELETE /api/cobradores/{id}` |
 | Clientes | `GET/POST /api/clientes`, `GET /api/clientes/cobrador/{id}` (asignación a ruta con `cobradorId` y `ordenRuta`) |
 | Préstamos | `POST /api/prestamos/simular`, `POST /api/prestamos`, `GET /api/prestamos[/cobrador/{id}]`, `POST /api/prestamos/actualizar-estados` |
@@ -58,6 +63,12 @@ Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.prof
   Un abono no puede superar el saldo del préstamo. Al cubrir todas las cuotas el préstamo queda `PAGADO`.
 - **Caja:** `efectivo esperado = base + cobrado − prestado − gastos`; `diferencia = entregado − esperado`
   (CUADRADA / SOBRANTE / FALTANTE). Con la caja cerrada no se aceptan abonos ni desembolsos ese día.
+
+- **Autenticación:** contraseñas con PBKDF2-HMAC-SHA256 y sal por usuario; sesiones JWT HS256 de 8 horas.
+  En desarrollo se crea el usuario `admin@cobro.com` / `Admin123*` (en producción solo si se define
+  `DEMO_ADMIN_PASSWORD`).
+- **Tienda:** un pedido descuenta inventario; si el pago es a `CREDITO` se emite un préstamo por el total
+  (con interés y scoring de IA). Si la IA bloquea la venta o falta stock, no se descuenta nada.
 
 ## Scoring de riesgo (IA)
 
