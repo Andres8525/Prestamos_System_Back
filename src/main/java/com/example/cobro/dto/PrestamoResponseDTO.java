@@ -13,7 +13,10 @@ public class PrestamoResponseDTO {
     private Double monto;
     private Double tasaInteres;
     private Double montoTotal;
+    private Double interes;
     private TipoLiquidacion tipoLiquidacion;
+    private Integer numeroCuotas;
+    private Double valorCuota;
     private LocalDate fechaInicio;
     private LocalDate fechaVencimiento;
     private EstadoPago estado;
@@ -28,7 +31,11 @@ public class PrestamoResponseDTO {
         dto.setMonto(prestamo.getMonto());
         dto.setTasaInteres(prestamo.getTasaInteres());
         dto.setMontoTotal(prestamo.getMontoTotal());
+        dto.setInteres(prestamo.getMontoTotal() != null && prestamo.getMonto() != null
+                ? prestamo.getMontoTotal() - prestamo.getMonto() : null);
         dto.setTipoLiquidacion(prestamo.getTipoLiquidacion());
+        dto.setNumeroCuotas(prestamo.getNumeroCuotas());
+        dto.setValorCuota(prestamo.getValorCuota());
         dto.setFechaInicio(prestamo.getFechaInicio());
         dto.setFechaVencimiento(prestamo.getFechaVencimiento());
         dto.setEstado(prestamo.getEstado());
@@ -52,6 +59,15 @@ public class PrestamoResponseDTO {
 
     public Double getMontoTotal() { return montoTotal; }
     public void setMontoTotal(Double montoTotal) { this.montoTotal = montoTotal; }
+
+    public Double getInteres() { return interes; }
+    public void setInteres(Double interes) { this.interes = interes; }
+
+    public Integer getNumeroCuotas() { return numeroCuotas; }
+    public void setNumeroCuotas(Integer numeroCuotas) { this.numeroCuotas = numeroCuotas; }
+
+    public Double getValorCuota() { return valorCuota; }
+    public void setValorCuota(Double valorCuota) { this.valorCuota = valorCuota; }
 
     public TipoLiquidacion getTipoLiquidacion() { return tipoLiquidacion; }
     public void setTipoLiquidacion(TipoLiquidacion tipoLiquidacion) {

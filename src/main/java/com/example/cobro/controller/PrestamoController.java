@@ -2,6 +2,7 @@ package com.example.cobro.controller;
 
 import com.example.cobro.dto.PrestamoRequestDTO;
 import com.example.cobro.dto.PrestamoResponseDTO;
+import com.example.cobro.dto.SimulacionPrestamoDTO;
 import com.example.cobro.model.EstadoPago;
 import com.example.cobro.model.Prestamo;
 import com.example.cobro.service.PrestamoService;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -22,9 +24,14 @@ public class PrestamoController {
 
     @PostMapping
     public ResponseEntity<PrestamoResponseDTO> crear(@Valid @RequestBody PrestamoRequestDTO dto) {
-        Prestamo prestamo = prestamoService.crearPrestamo(
-                dto.getClienteId(), dto.getMonto(), dto.getTipoLiquidacion());
+        Prestamo prestamo = prestamoService.crearPrestamo(dto, LocalDate.now());
         return ResponseEntity.status(HttpStatus.CREATED).body(PrestamoResponseDTO.fromEntity(prestamo));
+    }
+
+    /** Calcula intereses, cuota y vencimiento sin emitir el préstamo. */
+    @PostMapping("/simular")
+    public SimulacionPrestamoDTO simular(@Valid @RequestBody PrestamoRequestDTO dto) {
+        return prestamoService.simular(dto, LocalDate.now());
     }
 
     @GetMapping

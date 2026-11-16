@@ -30,6 +30,12 @@ public class Prestamo {
     @Column(nullable = false)
     private TipoLiquidacion tipoLiquidacion;
 
+    /** Número de cuotas del plan (null en préstamos antiguos: se usa el valor por defecto del plan). */
+    private Integer numeroCuotas;
+
+    /** Valor de la cuota regular. */
+    private Double valorCuota;
+
     @Column(nullable = false)
     private LocalDate fechaInicio;
 
@@ -64,6 +70,12 @@ public class Prestamo {
 
     public TipoLiquidacion getTipoLiquidacion() { return tipoLiquidacion; }
     public void setTipoLiquidacion(TipoLiquidacion tipoLiquidacion) { this.tipoLiquidacion = tipoLiquidacion; }
+
+    public Integer getNumeroCuotas() { return numeroCuotas; }
+    public void setNumeroCuotas(Integer numeroCuotas) { this.numeroCuotas = numeroCuotas; }
+
+    public Double getValorCuota() { return valorCuota; }
+    public void setValorCuota(Double valorCuota) { this.valorCuota = valorCuota; }
 
     public LocalDate getFechaInicio() { return fechaInicio; }
     public void setFechaInicio(LocalDate fechaInicio) { this.fechaInicio = fechaInicio; }
