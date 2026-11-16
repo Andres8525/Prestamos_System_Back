@@ -1,0 +1,60 @@
+// Scoring de riesgo crediticio (Machine Learning) expuesto por gRPC.
+syntax = "proto3";
+
+package crediruta.v1;
+
+import "crediruta/v1/comun.proto";
+
+option java_multiple_files = true;
+option java_package = "com.example.cobro.grpc.v1";
+option java_outer_classname = "ScoringProto";
+
+service ScoringService {
+  // Unario: probabilidad de incumplimiento de un cliente con todo su historial.
+  rpc EvaluarCliente(EvaluarClienteRequest) returns (EvaluacionRiesgo);
+
+  // Unario: evalúa un comportamiento de pago hipotético (simulador).
+  rpc Simular(CaracteristicasPago) returns (EvaluacionRiesgo);
+
+  // Streaming de servidor: evalúa la cartera activa y envía cada cliente apenas se calcula,
+  // sin esperar a terminar toda la cartera.
+  rpc EvaluarCartera(EvaluarCarteraRequest) returns (stream EvaluacionRiesgo);
+}
+
+message EvaluarClienteRequest {
+  int64 cliente_id = 1;
+}
+
+message EvaluarCarteraRequest {
+  // Solo se envían los clientes con este nivel o uno peor (SIN_ESPECIFICAR = todos).
+  NivelRiesgo nivel_minimo = 1;
+}
+
+// Variables de comportamiento de pago que usa el modelo.
+message CaracteristicasPago {
+  double promedio_dias_atraso = 1;
+  double max_dias_atraso = 2;
+  double tasa_cuotas_atrasadas = 3;
+  double tasa_abonos_incompletos = 4;
+  double frecuencia_pago = 5;
+  double tasa_saldo_vencido = 6;
+  double prestamos_pagados = 7;
+}
+
+message Factor {
+  string variable = 1;
+  string descripcion = 2;
+  // > 0 sube el riesgo, < 0 lo baja.
+  double impacto = 3;
+}
+
+message EvaluacionRiesgo {
+  int64 cliente_id = 1;
+  string cliente_nombre = 2;
+  double probabilidad_default = 3;
+  int32 puntaje = 4;
+  NivelRiesgo nivel = 5;
+  string recomendacion = 6;
+  string algoritmo = 7;
+  repeated Factor factores = 8;
+}
