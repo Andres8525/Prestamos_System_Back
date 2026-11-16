@@ -1,5 +1,6 @@
 package com.example.cobro.controller;
 
+import com.example.cobro.dto.CuotasClienteDTO;
 import com.example.cobro.dto.PagoResponseDTO;
 import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.model.Pago;
@@ -44,6 +45,17 @@ public class PagoController {
     @GetMapping("/prestamo/{prestamoId}/realizados")
     public List<PagoResponseDTO> listarRealizados(@PathVariable Long prestamoId) {
         return map(pagoService.listarRealizadosPorPrestamo(prestamoId));
+    }
+
+    /** Un registro por cliente con cuotas pendientes (para la vista de Cuotas). */
+    @GetMapping("/clientes")
+    public List<CuotasClienteDTO> resumenPorCliente() {
+        return pagoService.resumenPendientesPorCliente();
+    }
+
+    @GetMapping("/cliente/{clienteId}/pendientes")
+    public List<PagoResponseDTO> listarPendientesDeCliente(@PathVariable Long clienteId) {
+        return map(pagoService.listarPendientesPorCliente(clienteId));
     }
 
     @GetMapping("/atrasados")

@@ -1,6 +1,8 @@
 package com.example.cobro.service;
 
+import com.example.cobro.dto.CuotasClienteDTO;
 import com.example.cobro.exception.RecursoNoEncontradoException;
+import com.example.cobro.model.Cliente;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.model.EstadoPago;
 import com.example.cobro.model.Pago;
@@ -10,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -54,6 +59,35 @@ public class PagoService {
     public List<Pago> listarAtrasados() {
         return pagoRepository
                 .findByFechaPagoIsNullAndFechaProgramadaBeforeOrderByFechaProgramadaAsc(LocalDate.now());
+    }
+
+    /**
+     * Un registro por cliente con cuotas pendientes (orden alfabético), agrupando en memoria
+     * el resultado de una sola consulta.
+     */
+    @Transactional(readOnly = true)
+    public List<CuotasClienteDTO> resumenPendientesPorCliente() {
+        LocalDate hoy = LocalDate.now();
+        Map<Long, List<Pago>> porCliente = new LinkedHashMap<>();
+        for (Pago p : pagoRepository.findPendientesConCliente()) {
+            porCliente.computeIfAbsent(p.getPrestamo().getCliente().getId(), k -> new ArrayList<>()).add(p);
+        }
+        List<CuotasClienteDTO> resumen = new ArrayList<>(porCliente.size());
+        porCliente.forEach((clienteId, cuotas) -> {
+            Cliente cliente = cuotas.get(0).getPrestamo().getCliente();
+            int prestamos = (int) cuotas.stream().map(Pago::getPrestamoId).distinct().count();
+            int atrasadas = (int) cuotas.stream().filter(c -> c.getFechaProgramada().isBefore(hoy)).count();
+            double saldo = cuotas.stream().mapToDouble(Pago::saldo).sum();
+            resumen.add(new CuotasClienteDTO(clienteId, cliente.getNombre(), cliente.getCedula(), prestamos,
+                    cuotas.size(), atrasadas, Math.round(saldo * 100) / 100.0, cuotas.get(0).getFechaProgramada()));
+        });
+        return resumen;
+    }
+
+    /** Cuotas sin pagar de todos los préstamos del cliente, de la más antigua a la más reciente. */
+    @Transactional(readOnly = true)
+    public List<Pago> listarPendientesPorCliente(Long clienteId) {
+        return pagoRepository.findByPrestamo_Cliente_IdAndFechaPagoIsNullOrderByFechaProgramadaAscNumeroAsc(clienteId);
     }
 
     @Transactional(readOnly = true)

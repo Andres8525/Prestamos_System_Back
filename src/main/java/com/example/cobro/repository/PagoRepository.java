@@ -32,6 +32,13 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     /** Cuotas pendientes de varios préstamos en una sola consulta (evita N+1). */
     List<Pago> findByPrestamo_IdInAndFechaPagoIsNullOrderByPrestamo_IdAscNumeroAsc(java.util.Collection<Long> prestamoIds);
 
+    /** Todas las cuotas pendientes con su préstamo y cliente cargados en una sola consulta. */
+    @Query("SELECT p FROM Pago p JOIN FETCH p.prestamo pr JOIN FETCH pr.cliente c " +
+           "WHERE p.fechaPago IS NULL ORDER BY c.nombre, p.fechaProgramada, p.numero")
+    List<Pago> findPendientesConCliente();
+
+    List<Pago> findByPrestamo_Cliente_IdAndFechaPagoIsNullOrderByFechaProgramadaAscNumeroAsc(Long clienteId);
+
     long countByFechaPagoIsNull();
 
     List<Pago> findByFechaPagoIsNullAndFechaProgramadaBeforeOrderByFechaProgramadaAsc(LocalDate fecha);
