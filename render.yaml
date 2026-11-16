@@ -23,3 +23,14 @@ services:
       # (variable que Render define sola) para no suspenderse por inactividad.
       - key: KEEPALIVE_ENABLED
         value: "true"
+      - key: WORKERS_THREADS
+        value: "2"
+      # gRPC escucha en 9090 dentro del contenedor (Render solo publica el puerto HTTP;
+      # para usar gRPC desde fuera se necesita un servicio privado o un proxy).
+      - key: GRPC_PORT
+        value: "9090"
+      # Asistente de IA: pegue la clave de Groq en el panel de Render (no se guarda en git).
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
