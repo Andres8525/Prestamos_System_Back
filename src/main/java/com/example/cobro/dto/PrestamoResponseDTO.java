@@ -1,9 +1,11 @@
 package com.example.cobro.dto;
 
 import com.example.cobro.model.EstadoPago;
+import com.example.cobro.model.Pago;
 import com.example.cobro.model.Prestamo;
 import com.example.cobro.model.TipoLiquidacion;
 import java.time.LocalDate;
+import java.util.List;
 
 public class PrestamoResponseDTO {
 
@@ -22,8 +24,26 @@ public class PrestamoResponseDTO {
     private LocalDate fechaInicio;
     private LocalDate fechaVencimiento;
     private EstadoPago estado;
+    private Double totalPagado;
+    private Double saldoPendiente;
+    private Integer cuotasPagadas;
+    private Integer cuotasPendientes;
 
     public PrestamoResponseDTO() {}
+
+    /** Incluye el resumen de cartera calculado a partir de las cuotas del préstamo. */
+    public static PrestamoResponseDTO fromEntity(Prestamo prestamo, List<Pago> cuotas) {
+        PrestamoResponseDTO dto = fromEntity(prestamo);
+        double pagado = cuotas.stream().mapToDouble(Pago::montoPagadoEfectivo).sum();
+        double saldo = cuotas.stream().mapToDouble(Pago::saldo).sum();
+        int pagadas = (int) cuotas.stream().filter(Pago::estaPagada).count();
+        dto.setTotalPagado(Math.round(pagado * 100.0) / 100.0);
+        dto.setSaldoPendiente(Math.round(saldo * 100.0) / 100.0);
+        dto.setCuotasPagadas(pagadas);
+        dto.setCuotasPendientes(cuotas.size() - pagadas);
+        if (dto.getNumeroCuotas() == null) dto.setNumeroCuotas(cuotas.size());
+        return dto;
+    }
 
     public static PrestamoResponseDTO fromEntity(Prestamo prestamo) {
         PrestamoResponseDTO dto = new PrestamoResponseDTO();
@@ -93,6 +113,18 @@ public class PrestamoResponseDTO {
     public void setFechaVencimiento(LocalDate fechaVencimiento) {
         this.fechaVencimiento = fechaVencimiento;
     }
+
+    public Double getTotalPagado() { return totalPagado; }
+    public void setTotalPagado(Double totalPagado) { this.totalPagado = totalPagado; }
+
+    public Double getSaldoPendiente() { return saldoPendiente; }
+    public void setSaldoPendiente(Double saldoPendiente) { this.saldoPendiente = saldoPendiente; }
+
+    public Integer getCuotasPagadas() { return cuotasPagadas; }
+    public void setCuotasPagadas(Integer cuotasPagadas) { this.cuotasPagadas = cuotasPagadas; }
+
+    public Integer getCuotasPendientes() { return cuotasPendientes; }
+    public void setCuotasPendientes(Integer cuotasPendientes) { this.cuotasPendientes = cuotasPendientes; }
 
     public EstadoPago getEstado() { return estado; }
     public void setEstado(EstadoPago estado) { this.estado = estado; }

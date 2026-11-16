@@ -5,6 +5,7 @@ import com.example.cobro.dto.PrestamoResponseDTO;
 import com.example.cobro.dto.SimulacionPrestamoDTO;
 import com.example.cobro.model.EstadoPago;
 import com.example.cobro.model.Prestamo;
+import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.service.PrestamoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +23,13 @@ public class PrestamoController {
     @Autowired
     private PrestamoService prestamoService;
 
+    @Autowired
+    private PagoRepository pagoRepository;
+
     @PostMapping
     public ResponseEntity<PrestamoResponseDTO> crear(@Valid @RequestBody PrestamoRequestDTO dto) {
         Prestamo prestamo = prestamoService.crearPrestamo(dto, LocalDate.now());
-        return ResponseEntity.status(HttpStatus.CREATED).body(PrestamoResponseDTO.fromEntity(prestamo));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(prestamo));
     }
 
     /** Calcula intereses, cuota y vencimiento sin emitir el préstamo. */
@@ -41,7 +45,7 @@ public class PrestamoController {
 
     @GetMapping("/{id}")
     public PrestamoResponseDTO obtener(@PathVariable Long id) {
-        return PrestamoResponseDTO.fromEntity(prestamoService.obtenerPrestamoOFallar(id));
+        return toDto(prestamoService.obtenerPrestamoOFallar(id));
     }
 
     @GetMapping("/cliente/{clienteId}")
@@ -76,7 +80,7 @@ public class PrestamoController {
 
     @PutMapping("/{id}")
     public PrestamoResponseDTO actualizar(@PathVariable Long id, @RequestBody Prestamo prestamo) {
-        return PrestamoResponseDTO.fromEntity(prestamoService.actualizarPrestamo(id, prestamo));
+        return toDto(prestamoService.actualizarPrestamo(id, prestamo));
     }
 
     @DeleteMapping("/{id}")
@@ -92,6 +96,11 @@ public class PrestamoController {
     }
 
     private List<PrestamoResponseDTO> map(List<Prestamo> prestamos) {
-        return prestamos.stream().map(PrestamoResponseDTO::fromEntity).toList();
+        return prestamos.stream().map(this::toDto).toList();
+    }
+
+    private PrestamoResponseDTO toDto(Prestamo prestamo) {
+        return PrestamoResponseDTO.fromEntity(prestamo,
+                pagoRepository.findByPrestamo_IdOrderByNumeroAsc(prestamo.getId()));
     }
 }
