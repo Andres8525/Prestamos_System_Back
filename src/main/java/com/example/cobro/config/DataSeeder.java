@@ -8,7 +8,6 @@ import com.example.cobro.dto.PrestamoRequestDTO;
 import com.example.cobro.model.*;
 import com.example.cobro.repository.AdministradorRepository;
 import com.example.cobro.repository.ClienteRepository;
-import com.example.cobro.repository.ProductoRepository;
 import org.springframework.beans.factory.annotation.Value;
 import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.repository.PagoRepository;
@@ -47,7 +46,6 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private AbonoService abonoService;
     @Autowired private CajaService cajaService;
     @Autowired private AdministradorRepository administradorRepository;
-    @Autowired private ProductoRepository productoRepository;
     @Autowired private AuthService authService;
 
     /** Contraseña del usuario de demostración; vacía = no se crea (valor por defecto en producción). */
@@ -59,7 +57,6 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         sembrarAdminDemo();
-        sembrarProductos();
         if (cobradorRepository.count() > 0) return;
         log.info("Cargando cartera de demostración...");
         LocalDate hoy = LocalDate.now();
@@ -124,29 +121,6 @@ public class DataSeeder implements CommandLineRunner {
         if (claveAdminDemo == null || claveAdminDemo.isBlank() || administradorRepository.count() > 0) return;
         authService.registrar(new AuthDTO.Registro("Administrador Demo", "admin@cobro.com", claveAdminDemo));
         log.info("Usuario de demostración creado: admin@cobro.com");
-    }
-
-    private void sembrarProductos() {
-        if (productoRepository.count() > 0) return;
-        Object[][] productos = {
-                {"Licuadora 600W", "Vaso de vidrio de 1.5 L, 3 velocidades", "Electrodomésticos", 45.0, 12},
-                {"Cocineta 2 quemadores", "Cocineta a gas de mesa, acero inoxidable", "Electrodomésticos", 60.0, 8},
-                {"Ventilador de pedestal", "16 pulgadas, 3 velocidades, oscilante", "Electrodomésticos", 38.5, 10},
-                {"Smartphone 64 GB", "Pantalla 6.5\", doble SIM, cámara 13 MP", "Tecnología", 135.0, 6},
-                {"Audífonos inalámbricos", "Bluetooth 5.3, estuche de carga", "Tecnología", 18.0, 25},
-                {"Colchón 2 plazas", "Espuma de alta densidad, 20 cm", "Hogar", 120.0, 4},
-                {"Juego de ollas 5 piezas", "Aluminio antiadherente con tapas", "Hogar", 42.0, 9},
-                {"Balanza digital 40 kg", "Para puesto de mercado, batería recargable", "Negocio", 35.0, 14},
-                {"Vitrina mostrador", "Vidrio templado 1 m, dos niveles", "Negocio", 95.0, 3},
-                {"Carretilla de carga", "Plegable, capacidad 120 kg", "Negocio", 48.0, 7},
-                {"Quintal de arroz", "Arroz envejecido, saco de 45 kg", "Abarrotes", 52.0, 20},
-                {"Caja de aceite x12", "Aceite vegetal de 1 L, caja de 12 unidades", "Abarrotes", 27.6, 15}
-        };
-        for (Object[] p : productos) {
-            productoRepository.save(new Producto((String) p[0], (String) p[1], (String) p[2],
-                    (Double) p[3], (Integer) p[4]));
-        }
-        log.info("Catálogo de demostración cargado: {} productos.", productos.length);
     }
 
     private void sembrarHistorial(Cliente cliente, Perfil perfil, LocalDate hoy) {

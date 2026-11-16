@@ -6,7 +6,6 @@ import com.example.cobro.model.Cliente;
 import com.example.cobro.model.Cobrador;
 import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.CobradorRepository;
-import com.example.cobro.repository.PedidoRepository;
 import com.example.cobro.repository.PrestamoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,9 +25,6 @@ public class ClienteService {
 
     @Autowired
     private CobradorRepository cobradorRepository;
-
-    @Autowired
-    private PedidoRepository pedidoRepository;
 
     public Cliente crearCliente(Cliente cliente) {
         return crearCliente(cliente, null);
@@ -107,10 +103,6 @@ public class ClienteService {
         if (!prestamoRepository.findByCliente_Id(id).isEmpty()) {
             throw new ReglaNegocioException(
                     "No se puede eliminar el cliente porque tiene préstamos registrados");
-        }
-        if (pedidoRepository.existsByCliente_Id(id)) {
-            throw new ReglaNegocioException(
-                    "No se puede eliminar el cliente porque tiene pedidos registrados en la tienda");
         }
         clienteRepository.deleteById(id);
     }

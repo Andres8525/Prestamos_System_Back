@@ -13,7 +13,6 @@ import com.example.cobro.model.*;
 import com.example.cobro.repository.AbonoRepository;
 import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.PagoRepository;
-import com.example.cobro.repository.PedidoRepository;
 import com.example.cobro.repository.PrestamoRepository;
 import com.example.cobro.service.plan.PlanLiquidacion;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +45,6 @@ public class PrestamoService {
 
     @Autowired
     private CajaService cajaService;
-
-    @Autowired
-    private PedidoRepository pedidoRepository;
 
     @Autowired
     private CreditScoringService creditScoringService;
@@ -178,10 +174,6 @@ public class PrestamoService {
 
     public void eliminarPrestamo(Long id) {
         Prestamo prestamo = obtenerPrestamoOFallar(id);
-        pedidoRepository.findByPrestamo_Id(id).stream().findFirst().ifPresent(pedido -> {
-            throw new ReglaNegocioException(
-                    "No se puede eliminar: el préstamo financia el pedido #" + pedido.getId() + " de la tienda");
-        });
         abonoRepository.deleteByPrestamo_Id(id);
         pagoRepository.deleteAll(pagoRepository.findByPrestamo_IdOrderByNumeroAsc(id));
         prestamoRepository.delete(prestamo);

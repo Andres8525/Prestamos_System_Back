@@ -46,7 +46,7 @@ public class Administrador extends Usuario {
             "CREAR_PRESTAMOS",
             "REGISTRAR_PAGOS",
             "CUADRAR_CAJA",
-            "GESTIONAR_TIENDA",
+            "VER_SCORING_IA",
             "VER_PANEL",
             "GENERAR_REPORTES"
         );
