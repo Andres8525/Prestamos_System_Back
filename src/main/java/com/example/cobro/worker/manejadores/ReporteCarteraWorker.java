@@ -1,5 +1,6 @@
 package com.example.cobro.worker.manejadores;
 
+import com.example.cobro.estructuras.IndiceAgrupado;
 import com.example.cobro.model.EstadoPago;
 import com.example.cobro.model.Pago;
 import com.example.cobro.model.Prestamo;
@@ -39,9 +40,14 @@ public class ReporteCarteraWorker implements ManejadorTarea {
         StringBuilder csv = new StringBuilder(CABECERA).append('\n');
         int filas = 0;
         double saldoTotal = 0;
-        for (Prestamo p : prestamoRepository.findAll()) {
-            if (p.getEstado() == EstadoPago.PAGADO) continue;
-            List<Pago> pendientes = pagoRepository.findByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(p.getId());
+        List<Prestamo> activos = prestamoRepository.findAll().stream()
+                .filter(p -> p.getEstado() != EstadoPago.PAGADO).toList();
+        IndiceAgrupado<Long, Pago> cuotas = IndiceAgrupado.de(
+                pagoRepository.findByPrestamo_IdInAndFechaPagoIsNullOrderByPrestamo_IdAscNumeroAsc(
+                        activos.stream().map(Prestamo::getId).toList()),
+                Pago::getPrestamoId);
+        for (Prestamo p : activos) {
+            List<Pago> pendientes = cuotas.de(p.getId());
             double saldo = pendientes.stream().mapToDouble(Pago::saldo).sum();
             long vencidas = pendientes.stream().filter(c -> c.getFechaProgramada().isBefore(hoy)).count();
             long atraso = pendientes.isEmpty() ? 0
