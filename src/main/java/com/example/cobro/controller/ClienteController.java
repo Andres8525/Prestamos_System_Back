@@ -17,6 +17,9 @@ import java.util.List;
 public class ClienteController {
 
     @Autowired
+    private com.example.cobro.service.BusquedaClientesService busquedaClientes;
+
+    @Autowired
     private ClienteService clienteService;
 
     @PostMapping
@@ -28,6 +31,12 @@ public class ClienteController {
     @GetMapping
     public List<ClienteResponseDTO> listar() {
         return clienteService.listarClientes().stream().map(ClienteResponseDTO::fromEntity).toList();
+    }
+
+    /** Autocompletado: clientes cuyo nombre, apellido o cédula empieza con {@code q}. */
+    @GetMapping("/buscar")
+    public List<ClienteResponseDTO> buscar(@RequestParam String q, @RequestParam(defaultValue = "8") int limite) {
+        return busquedaClientes.buscar(q, limite).stream().map(ClienteResponseDTO::fromEntity).toList();
     }
 
     @GetMapping("/cobrador/{cobradorId}")
