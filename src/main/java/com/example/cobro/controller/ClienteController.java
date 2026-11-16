@@ -1,5 +1,6 @@
 package com.example.cobro.controller;
 
+import com.example.cobro.service.BusquedaClientesService;
 import com.example.cobro.dto.ClienteRequestDTO;
 import com.example.cobro.dto.ClienteResponseDTO;
 import com.example.cobro.exception.RecursoNoEncontradoException;
@@ -17,7 +18,7 @@ import java.util.List;
 public class ClienteController {
 
     @Autowired
-    private com.example.cobro.service.BusquedaClientesService busquedaClientes;
+    private BusquedaClientesService busquedaClientes;
 
     @Autowired
     private ClienteService clienteService;

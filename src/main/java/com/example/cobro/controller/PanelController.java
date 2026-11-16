@@ -1,5 +1,7 @@
 package com.example.cobro.controller;
 
+import com.example.cobro.estructuras.TramosMora;
+import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.model.Panel;
 import com.example.cobro.model.PanelItem;
 import com.example.cobro.service.PanelService;
@@ -7,12 +9,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/panel")
 public class PanelController {
 
     @Autowired
-    private com.example.cobro.repository.PagoRepository pagoRepository;
+    private PagoRepository pagoRepository;
 
     @Autowired
     private PanelService panelService;
@@ -24,15 +30,15 @@ public class PanelController {
 
     /** Antigüedad de la cartera: cuotas pendientes y saldo agrupados por tramo de días de atraso. */
     @GetMapping("/antiguedad")
-    public java.util.List<com.example.cobro.estructuras.TramosMora.Resumen> antiguedad() {
-        java.time.LocalDate hoy = java.time.LocalDate.now();
-        java.util.List<long[]> pendientes = pagoRepository.findAll().stream()
+    public List<TramosMora.Resumen> antiguedad() {
+        LocalDate hoy = LocalDate.now();
+        List<long[]> pendientes = pagoRepository.findAll().stream()
                 .filter(c -> c.getFechaPago() == null)
                 .map(c -> new long[]{
-                        Math.max(0, java.time.temporal.ChronoUnit.DAYS.between(c.getFechaProgramada(), hoy)),
+                        Math.max(0, ChronoUnit.DAYS.between(c.getFechaProgramada(), hoy)),
                         Math.round(c.saldo() * 100)})
                 .toList();
-        return new com.example.cobro.estructuras.TramosMora().resumir(pendientes);
+        return new TramosMora().resumir(pendientes);
     }
 
     @GetMapping("/clientes-adeuda")
