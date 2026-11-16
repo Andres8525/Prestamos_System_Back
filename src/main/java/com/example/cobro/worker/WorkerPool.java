@@ -62,7 +62,12 @@ public class WorkerPool implements SmartLifecycle {
     public synchronized void start() {
         if (!habilitado || corriendo) return;
         corriendo = true;
-        int recuperadas = tareas.recuperarPendientes();
+        int recuperadas = 0;
+        try {
+            recuperadas = tareas.recuperarPendientes();
+        } catch (Exception e) {
+            log.warn("No se pudieron recuperar las tareas pendientes: {}", e.getMessage());
+        }
         for (int i = 1; i <= numeroHilos; i++) {
             Thread hilo = new Thread(this::bucle, "worker-" + i);
             hilo.setDaemon(true);
