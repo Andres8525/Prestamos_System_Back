@@ -4,7 +4,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.sql.DataSource;
 import java.lang.management.ManagementFactory;
+import java.sql.Connection;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -18,12 +20,37 @@ import java.util.Map;
 @RequestMapping("/api")
 public class HealthController {
 
+    private final DataSource dataSource;
+
+    public HealthController(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    /**
+     * Estado del servicio y de la base de datos. Responde siempre 200 mientras el proceso esté vivo:
+     * una caída momentánea de la base no debe hacer que Render reinicie la aplicación.
+     */
     @GetMapping("/health")
     public Map<String, Object> health() {
         Map<String, Object> estado = new LinkedHashMap<>();
         estado.put("status", "UP");
+        estado.put("baseDatos", baseDisponible() ? "UP" : "DOWN");
         estado.put("hora", Instant.now().toString());
         estado.put("activoDesde", Duration.ofMillis(ManagementFactory.getRuntimeMXBean().getUptime()).toSeconds());
         return estado;
+    }
+
+    /** Respuesta mínima para monitores externos que solo necesitan saber si el proceso responde. */
+    @GetMapping("/ping")
+    public Map<String, String> ping() {
+        return Map.of("pong", Instant.now().toString());
+    }
+
+    private boolean baseDisponible() {
+        try (Connection conexion = dataSource.getConnection()) {
+            return conexion.isValid(2);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
