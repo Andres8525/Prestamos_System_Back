@@ -3,12 +3,10 @@ package com.example.cobro.config;
 import com.example.cobro.tiemporeal.AutenticacionHandshake;
 import com.example.cobro.tiemporeal.ManejadorEventosWebSocket;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
-import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 import java.util.Arrays;
 
@@ -33,13 +31,5 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registro.addHandler(manejador, "/ws/eventos")
                 .addInterceptors(autenticacion)
                 .setAllowedOriginPatterns(origenes);
-    }
-
-    @Bean
-    public ServletServerContainerFactoryBean contenedorWebSocket() {
-        ServletServerContainerFactoryBean contenedor = new ServletServerContainerFactoryBean();
-        contenedor.setMaxTextMessageBufferSize(16 * 1024);
-        contenedor.setMaxSessionIdleTimeout(120_000L);
-        return contenedor;
     }
 }

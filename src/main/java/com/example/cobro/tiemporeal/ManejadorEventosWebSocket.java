@@ -23,6 +23,7 @@ public class ManejadorEventosWebSocket extends TextWebSocketHandler {
     private static final int LIMITE_ENVIO_MS = 10_000;
     private static final int LIMITE_BUFFER_BYTES = 512 * 1024;
     private static final int EVENTOS_INICIALES = 10;
+    private static final int LIMITE_MENSAJE_ENTRANTE = 16 * 1024;
 
     private final RegistroConexiones conexiones;
     private final DifusorEventos difusor;
@@ -39,6 +40,7 @@ public class ManejadorEventosWebSocket extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession sesion) {
+        sesion.setTextMessageSizeLimit(LIMITE_MENSAJE_ENTRANTE);
         WebSocketSession segura = new ConcurrentWebSocketSessionDecorator(sesion, LIMITE_ENVIO_MS, LIMITE_BUFFER_BYTES);
         Map<String, Object> atributos = sesion.getAttributes();
         ConexionCliente conexion = new ConexionCliente(segura, (Long) atributos.get(AutenticacionHandshake.USUARIO_ID),
