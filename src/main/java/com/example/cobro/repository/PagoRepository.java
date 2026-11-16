@@ -25,7 +25,6 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     long countByEstado(EstadoPago estado);
 
-    // --- Cuotas sin pagar ---
     List<Pago> findByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(Long prestamoId);
 
     Optional<Pago> findFirstByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(Long prestamoId);
@@ -37,7 +36,6 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     List<Pago> findByFechaPagoIsNullAndFechaProgramadaBeforeOrderByFechaProgramadaAsc(LocalDate fecha);
 
-    // --- Cuotas pagadas ---
     List<Pago> findByPrestamo_IdAndFechaPagoIsNotNull(Long prestamoId);
 
     @Query("SELECT COUNT(p) FROM Pago p WHERE p.fechaPago IS NOT NULL " +

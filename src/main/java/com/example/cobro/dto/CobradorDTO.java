@@ -5,7 +5,6 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
-/** DTO de entrada/salida para los agentes cobradores. */
 public class CobradorDTO {
 
     private Long id;
