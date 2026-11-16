@@ -43,6 +43,13 @@ public class AuthService {
         return respuesta(administradorRepository.save(admin));
     }
 
+    /** Primer paso del acceso: indica si el email ya está registrado. */
+    @Transactional(readOnly = true)
+    public AuthDTO.EstadoEmail verificarEmail(AuthDTO.VerificarEmail dto) {
+        String email = normalizar(dto.email());
+        return new AuthDTO.EstadoEmail(email, administradorRepository.existsByEmail(email));
+    }
+
     public AuthDTO.Respuesta iniciarSesion(AuthDTO.Login dto) {
         // Mismo mensaje para email inexistente y clave errónea: no se revela qué cuentas existen.
         Administrador admin = administradorRepository.findByEmail(normalizar(dto.email()))

@@ -23,6 +23,12 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrar(dto));
     }
 
+    /** Paso 1 del acceso: ¿el email tiene cuenta? (decide entre pedir contraseña o crear cuenta). */
+    @PostMapping("/auth/verificar-email")
+    public AuthDTO.EstadoEmail verificarEmail(@Valid @RequestBody AuthDTO.VerificarEmail dto) {
+        return authService.verificarEmail(dto);
+    }
+
     @PostMapping("/auth/login")
     public AuthDTO.Respuesta login(@Valid @RequestBody AuthDTO.Login dto) {
         return authService.iniciarSesion(dto);

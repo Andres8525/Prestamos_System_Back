@@ -33,6 +33,16 @@ public final class AuthDTO {
             @NotBlank(message = "La contraseña es obligatoria") String password
     ) {}
 
+    /** Primer paso del acceso: solo el email. */
+    public record VerificarEmail(
+            @NotBlank(message = "El email es obligatorio")
+            @Email(message = "El email no es válido")
+            String email
+    ) {}
+
+    /** Indica si el email ya tiene cuenta (login) o si se debe crear una (registro). */
+    public record EstadoEmail(String email, boolean existe) {}
+
     public record UsuarioInfo(Long id, String nombre, String email, List<String> permisos) {
         public static UsuarioInfo de(Administrador a) {
             return new UsuarioInfo(a.getId(), a.getNombre(), a.getEmail(), a.getPermisos());

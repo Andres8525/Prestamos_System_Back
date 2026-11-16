@@ -18,7 +18,8 @@ import java.util.Set;
 
 /**
  * Exige un token válido (Authorization: Bearer ...) en toda la API,
- * excepto en el registro, el inicio de sesión y la verificación de disponibilidad.
+ * excepto en el registro, el inicio de sesión (y su paso de verificación del email)
+ * y la verificación de disponibilidad.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -26,7 +27,7 @@ public class AuthFilter extends OncePerRequestFilter {
 
     public static final String ATRIBUTO_USUARIO_ID = "usuarioId";
     private static final Set<String> RUTAS_PUBLICAS =
-            Set.of("/api/auth/login", "/api/auth/register", "/api/health");
+            Set.of("/api/auth/login", "/api/auth/register", "/api/auth/verificar-email", "/api/health");
 
     private final TokenService tokenService;
 
