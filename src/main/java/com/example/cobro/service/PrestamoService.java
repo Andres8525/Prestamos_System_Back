@@ -1,5 +1,6 @@
 package com.example.cobro.service;
 
+import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.model.*;
 import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.PagoRepository;
@@ -32,7 +33,7 @@ public class PrestamoService {
 
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado con ID: " + clienteId));
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Cliente", clienteId));
 
         double montoTotal = monto * (1 + TASA_INTERES / 100);
         LocalDate hoy = LocalDate.now();
@@ -94,6 +95,12 @@ public class PrestamoService {
     }
 
     @Transactional(readOnly = true)
+    public Prestamo obtenerPrestamoOFallar(Long id) {
+        return prestamoRepository.findById(id)
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Préstamo", id));
+    }
+
+    @Transactional(readOnly = true)
     public List<Prestamo> listarPrestamos() {
         return prestamoRepository.findAll();
     }
@@ -115,14 +122,14 @@ public class PrestamoService {
 
     public Prestamo actualizarPrestamo(Long id, Prestamo datos) {
         Prestamo prestamo = prestamoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Préstamo no encontrado con ID: " + id));
-        prestamo.setEstado(datos.getEstado());
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Préstamo", id));
+        if (datos.getEstado() != null) prestamo.setEstado(datos.getEstado());
         return prestamoRepository.save(prestamo);
     }
 
     public void eliminarPrestamo(Long id) {
         Prestamo prestamo = prestamoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Préstamo no encontrado con ID: " + id));
+                .orElseThrow(() -> RecursoNoEncontradoException.de("Préstamo", id));
         pagoRepository.deleteAll(pagoRepository.findByPrestamo_IdOrderByNumeroAsc(id));
         prestamoRepository.delete(prestamo);
     }
