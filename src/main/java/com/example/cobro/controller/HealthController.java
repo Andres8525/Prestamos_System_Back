@@ -1,6 +1,7 @@
 package com.example.cobro.controller;
 
 import com.example.cobro.config.KeepAliveService;
+import com.example.cobro.tiemporeal.RegistroConexiones;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,10 +25,13 @@ public class HealthController {
 
     private final DataSource dataSource;
     private final ObjectProvider<KeepAliveService> keepAlive;
+    private final RegistroConexiones conexiones;
 
-    public HealthController(DataSource dataSource, ObjectProvider<KeepAliveService> keepAlive) {
+    public HealthController(DataSource dataSource, ObjectProvider<KeepAliveService> keepAlive,
+                            RegistroConexiones conexiones) {
         this.dataSource = dataSource;
         this.keepAlive = keepAlive;
+        this.conexiones = conexiones;
     }
 
     /**
@@ -40,6 +44,7 @@ public class HealthController {
         estado.put("status", "UP");
         estado.put("baseDatos", baseDisponible() ? "UP" : "DOWN");
         estado.put("hora", Instant.now().toString());
+        estado.put("conexionesTiempoReal", conexiones.cantidad());
         estado.put("activoDesde", Duration.ofMillis(ManagementFactory.getRuntimeMXBean().getUptime()).toSeconds());
         KeepAliveService ka = keepAlive.getIfAvailable();
         if (ka != null && ka.activo()) {
