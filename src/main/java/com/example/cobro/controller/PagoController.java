@@ -3,6 +3,7 @@ package com.example.cobro.controller;
 import com.example.cobro.dto.PagoResponseDTO;
 import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.model.Pago;
+import com.example.cobro.service.AbonoService;
 import com.example.cobro.service.PagoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,9 @@ public class PagoController {
 
     @Autowired
     private PagoService pagoService;
+
+    @Autowired
+    private AbonoService abonoService;
 
     @GetMapping
     public List<PagoResponseDTO> listar() {
@@ -52,9 +56,15 @@ public class PagoController {
         return pagoService.contarPendientes();
     }
 
+    /**
+     * Paga el saldo completo de la cuota. Se registra como un abono para que
+     * el dinero quede reflejado en el cuadre de caja del cobrador.
+     */
     @PostMapping("/{id}/pagar")
-    public PagoResponseDTO marcarPagado(@PathVariable Long id) {
-        return PagoResponseDTO.fromEntity(pagoService.marcarPagoRealizado(id));
+    public PagoResponseDTO marcarPagado(@PathVariable Long id,
+                                        @RequestParam(required = false) Long cobradorId) {
+        abonoService.pagarCuota(id, cobradorId);
+        return obtener(id);
     }
 
     @PutMapping("/{id}")
