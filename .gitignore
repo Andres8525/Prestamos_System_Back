@@ -18,3 +18,8 @@ replay_pid*.log
 .classpath
 .project
 .settings/
+
+# Variables de entorno con credenciales (nunca se suben)
+.env
+.env.*
+!.env.example
