@@ -229,8 +229,6 @@ public class CreditScoringService {
                 c.comoMapa(), factores(m, x), infoModelo);
     }
 
-    // ---------------------------------------------------------------- dataset
-
     /** Construye muestras a partir de los préstamos cuyo desenlace ya se conoce. */
     List<Muestra> construirMuestrasReales(LocalDate hoy) {
         List<Muestra> muestras = new ArrayList<>();
@@ -294,8 +292,6 @@ public class CreditScoringService {
         }
         return muestras;
     }
-
-    // ---------------------------------------------------------------- utilidades
 
     private List<ScoringDTO.Factor> factores(ModeloClasificacion m, double[] x) {
         double[] contrib = m.contribuciones(x);

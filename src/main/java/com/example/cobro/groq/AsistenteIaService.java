@@ -101,8 +101,6 @@ public class AsistenteIaService {
                 r.usage() != null ? r.usage().totalTokens() : null);
     }
 
-    // ------------------------------------------------------------------ datos anónimos
-
     static String datosScoring(ScoringDTO s) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.ROOT, "- Probabilidad de incumplimiento: %.1f %% (nivel %s, recomendación %s)%n",
@@ -168,8 +166,8 @@ public class AsistenteIaService {
             ResumenModeloDTO m = scoringService.getResumen();
             sb.append(String.format(Locale.ROOT, "- Modelo de ML en uso: %s, AUC en prueba %.3f%n",
                     m.modelo().algoritmo(), m.evaluacionPrueba().auc()));
-        } catch (Exception ignorado) {
-            // modelo aún no entrenado
+        } catch (Exception modeloNoEntrenado) {
+            sb.append("- Modelo de ML: aún no entrenado").append('\n');
         }
         return sb.toString();
     }

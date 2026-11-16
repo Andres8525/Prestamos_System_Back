@@ -79,8 +79,8 @@ public class GroqClient {
         try {
             JsonNode nodo = json.readTree(cuerpo).path("error").path("message");
             if (!nodo.isMissingNode()) detalle = " (" + nodo.asText() + ")";
-        } catch (Exception ignorado) {
-            // cuerpo no JSON
+        } catch (Exception cuerpoNoJson) {
+            detalle = "";
         }
         String base = switch (codigo) {
             case 401, 403 -> "Groq rechazó la clave de API";
