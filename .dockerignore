@@ -1,6 +1,11 @@
+# Contexto mínimo para docker build: solo pom.xml y src.
 .env
-.env.*
-target/
-data/
-.git/
+.git
+.github
+data
+target
 *.log
+replay_pid*
+*.iml
+.idea
+.vscode
