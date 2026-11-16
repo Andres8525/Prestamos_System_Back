@@ -12,6 +12,11 @@ public final class AuthDTO {
 
     private AuthDTO() {}
 
+    /** Quita espacios al inicio y al final (emails copiados y pegados) antes de validar. */
+    private static String recortar(String email) {
+        return email == null ? null : email.trim();
+    }
+
     public record Registro(
             @NotBlank(message = "El nombre es obligatorio")
             @Size(max = 80, message = "El nombre no puede superar 80 caracteres")
@@ -26,19 +31,32 @@ public final class AuthDTO {
             @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
                      message = "La contraseña debe incluir letras y números")
             String password
-    ) {}
+    ) {
+        public Registro {
+            email = recortar(email);
+            nombre = nombre == null ? null : nombre.trim();
+        }
+    }
 
     public record Login(
             @NotBlank(message = "El email es obligatorio") String email,
             @NotBlank(message = "La contraseña es obligatoria") String password
-    ) {}
+    ) {
+        public Login {
+            email = recortar(email);
+        }
+    }
 
     /** Primer paso del acceso: solo el email. */
     public record VerificarEmail(
             @NotBlank(message = "El email es obligatorio")
             @Email(message = "El email no es válido")
             String email
-    ) {}
+    ) {
+        public VerificarEmail {
+            email = recortar(email);
+        }
+    }
 
     /** Indica si el email ya tiene cuenta (login) o si se debe crear una (registro). */
     public record EstadoEmail(String email, boolean existe) {}

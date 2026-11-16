@@ -28,6 +28,7 @@ class AuthIntegrationTest {
     @Autowired private ObjectMapper json;
     @Autowired private AdministradorRepository administradorRepository;
     @Autowired private PasswordHasher passwordHasher;
+    @Autowired private com.example.cobro.repository.ParametroSistemaRepository parametros;
 
     @BeforeEach
     void prepararMockMvc() {
@@ -79,5 +80,62 @@ class AuthIntegrationTest {
                                 "nombre", "X", "email", "debil@test.com", "password", "corta"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.password").exists());
+    }
+
+    @Test
+    void elAccesoEnDosPasosIndicaSiElEmailTieneCuenta() throws Exception {
+        mvc.perform(post("/api/auth/verificar-email").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", "nuevo@test.com"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.existe").value(false));
+
+        mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of(
+                        "nombre", "Nuevo", "email", "nuevo@test.com", "password", "Clave1234"))))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/auth/verificar-email").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", "  NUEVO@test.com "))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.existe").value(true))
+                .andExpect(jsonPath("$.email").value("nuevo@test.com"));
+
+        mvc.perform(post("/api/auth/verificar-email").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", "no-es-un-email"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void laClaveDeSesionSeGuardaEnLaBaseDeDatos() {
+        assertTrue(parametros.findById("jwt.secret").isPresent(),
+                "sin JWT_SECRET la clave se persiste para sobrevivir a los reinicios");
+    }
+
+    @Test
+    void laApiDeMachineLearningEntregaElReporteYElSimulador() throws Exception {
+        String registro = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of(
+                                "nombre", "Analista", "email", "ml@test.com", "password", "Modelo2024"))))
+                .andReturn().getResponse().getContentAsString();
+        String token = json.readTree(registro).get("token").asText();
+
+        mvc.perform(get("/api/ml/modelo").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comparacion.length()").value(2))
+                .andExpect(jsonPath("$.evaluacionPrueba.curvaRoc.length()").value(21))
+                .andExpect(jsonPath("$.validacionCruzada.pliegues").value(5));
+
+        mvc.perform(post("/api/ml/simular").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of(
+                                "promedioDiasAtraso", 20, "maxDiasAtraso", 45, "tasaCuotasAtrasadas", 0.9,
+                                "tasaAbonosIncompletos", 0.8, "frecuenciaPago", 0.3, "tasaSaldoVencido", 0.7,
+                                "prestamosPagados", 0))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nivelRiesgo").value("ALTO"));
+
+        mvc.perform(get("/api/ml/entrenamientos").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").isNotEmpty());
     }
 }
