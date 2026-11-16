@@ -19,3 +19,7 @@ services:
         value: https://*.vercel.app,http://localhost:4200
       - key: APP_SEED_ENABLED
         value: "false"
+      # Keep-alive: el servicio se llama a sí mismo cada 10 min por RENDER_EXTERNAL_URL
+      # (variable que Render define sola) para no suspenderse por inactividad.
+      - key: KEEPALIVE_ENABLED
+        value: "true"
