@@ -1,5 +1,6 @@
 package com.example.cobro.groq;
 
+import com.example.cobro.estructuras.IndiceAgrupado;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.ia.CreditScoringService;
 import com.example.cobro.ia.ResumenModeloDTO;
@@ -142,12 +143,17 @@ public class AsistenteIaService {
         Map<String, Integer> porRiesgo = new java.util.TreeMap<>();
         double saldo = 0, vencido = 0;
         int activos = 0;
-        for (Prestamo p : prestamoRepository.findAll()) {
+        List<Prestamo> prestamos = prestamoRepository.findAll();
+        IndiceAgrupado<Long, Pago> pendientes = IndiceAgrupado.de(
+                pagoRepository.findByPrestamo_IdInAndFechaPagoIsNullOrderByPrestamo_IdAscNumeroAsc(
+                        prestamos.stream().filter(p -> p.getEstado() != EstadoPago.PAGADO).map(Prestamo::getId).toList()),
+                Pago::getPrestamoId);
+        for (Prestamo p : prestamos) {
             porEstado.merge(p.getEstado(), 1, Integer::sum);
             if (p.getEstado() == EstadoPago.PAGADO) continue;
             activos++;
             porRiesgo.merge(p.getNivelRiesgo() != null ? p.getNivelRiesgo() : "SIN_EVALUAR", 1, Integer::sum);
-            for (Pago c : pagoRepository.findByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(p.getId())) {
+            for (Pago c : pendientes.de(p.getId())) {
                 saldo += c.saldo();
                 if (c.getFechaProgramada().isBefore(hoy)) vencido += c.saldo();
             }
