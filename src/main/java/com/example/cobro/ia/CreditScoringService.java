@@ -1,5 +1,6 @@
 package com.example.cobro.ia;
 
+import com.example.cobro.estructuras.CacheLru;
 import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.model.*;
 import com.example.cobro.repository.AbonoRepository;
@@ -70,6 +71,7 @@ public class CreditScoringService {
     private volatile ModeloClasificacion modelo;
     private volatile ScoringDTO.ModeloInfo infoModelo;
     private volatile ResumenModeloDTO resumen;
+    private final CacheLru<Long, ScoringDTO> cacheClientes = new CacheLru<>(500);
 
     @EventListener(ApplicationReadyEvent.class)
     public void entrenarAlIniciar() {
@@ -145,6 +147,7 @@ public class CreditScoringService {
         this.modelo = produccion;
         this.infoModelo = info;
         this.resumen = resumen;
+        cacheClientes.limpiar();
         historialMl.registrarEntrenamiento(resumen, origen);
         eventos.publishEvent(EventoNegocio.de(TipoEvento.MODELO_ENTRENADO,
                 "Modelo reentrenado: " + elegido, "algoritmo", elegido, "auc", mejorPrueba.auc(),
@@ -174,6 +177,19 @@ public class CreditScoringService {
 
     /** Evalúa el riesgo de incumplimiento de un cliente con todo su historial hasta hoy. */
     public ScoringDTO evaluarCliente(Long clienteId) {
+        return cacheClientes.obtenerOCalcular(clienteId, this::calcularCliente);
+    }
+
+    /** El resultado de un cliente cambia con sus abonos y préstamos: se recalcula en la próxima consulta. */
+    public void invalidarCliente(Long clienteId) {
+        cacheClientes.invalidar(clienteId);
+    }
+
+    public double tasaAciertosCache() {
+        return cacheClientes.tasaAciertos();
+    }
+
+    private ScoringDTO calcularCliente(Long clienteId) {
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> RecursoNoEncontradoException.de("Cliente", clienteId));
         asegurarModelo();
