@@ -6,6 +6,7 @@ import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.model.*;
+import com.example.cobro.repository.AbonoRepository;
 import com.example.cobro.repository.ClienteRepository;
 import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.repository.PrestamoRepository;
@@ -34,6 +35,9 @@ public class PrestamoService {
 
     @Autowired
     private CobradorRepository cobradorRepository;
+
+    @Autowired
+    private AbonoRepository abonoRepository;
 
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         return crearPrestamo(new PrestamoRequestDTO(clienteId, monto, tipo), LocalDate.now());
@@ -147,6 +151,7 @@ public class PrestamoService {
 
     public void eliminarPrestamo(Long id) {
         Prestamo prestamo = obtenerPrestamoOFallar(id);
+        abonoRepository.deleteByPrestamo_Id(id);
         pagoRepository.deleteAll(pagoRepository.findByPrestamo_IdOrderByNumeroAsc(id));
         prestamoRepository.delete(prestamo);
     }
@@ -168,6 +173,13 @@ public class PrestamoService {
         }
         prestamo.setEstado(nuevoEstado);
         return prestamoRepository.save(prestamo);
+    }
+
+    /** Saldo pendiente del préstamo (suma de los saldos de sus cuotas). */
+    @Transactional(readOnly = true)
+    public double calcularSaldo(Long prestamoId) {
+        return pagoRepository.findByPrestamo_IdAndFechaPagoIsNullOrderByNumeroAsc(prestamoId).stream()
+                .mapToDouble(Pago::saldo).sum();
     }
 
     public void actualizarEstados() {
