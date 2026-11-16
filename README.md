@@ -28,6 +28,7 @@ En Render se configuran en *Environment* del Web Service.
 | `JWT_SECRET` | clave para firmar las sesiones (32+ caracteres). Si falta, se genera una y se guarda en la base de datos |
 | `ML_CRON` | horario del reentrenamiento diario del modelo (por defecto `0 0 3 * * *`) |
 | `APP_SEED_ENABLED` | `true` para cargar la cartera de demostración si la base está vacía |
+| `DEMO_ADMIN_PASSWORD` | si no hay administradores, crea `admin@cobro.com` con esta clave (independiente de `APP_SEED_ENABLED`) |
 | `KEEPALIVE_ENABLED` / `KEEPALIVE_URL` | keep-alive (activo por defecto). En Render la URL se toma sola de `RENDER_EXTERNAL_URL` |
 | `WORKERS_THREADS` | hilos del pool de workers (por defecto 2) |
 | `GRPC_ENABLED` / `GRPC_PORT` | servidor gRPC (por defecto activo en el puerto 9090) |
@@ -43,6 +44,9 @@ Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.prof
 1. *New + → Blueprint* y seleccionar este repositorio (usa `render.yaml`), o *New + → Web Service* con runtime **Docker**.
 2. Ingresar `DATABASE_URL` con la *Internal Database URL* de la base (misma región: Oregon).
 3. Desplegar y verificar `https://<servicio>.onrender.com/api/health` (Health Check Path: `/api/health`).
+4. Copiar la URL **exacta** que muestra Render en el servicio y usarla en `environment.prod.ts` del frontend.
+   Si el nombre ya estaba tomado, Render agrega un sufijo: este servicio quedó en
+   `https://cobro-backend-txeo.onrender.com` (`cobro-backend.onrender.com` pertenece a otra cuenta y no responde).
 
 ### Si el deploy falla o el servicio no responde
 
@@ -60,7 +64,7 @@ El proyecto lo evita con tres mecanismos complementarios:
    (`RENDER_EXTERNAL_URL`/api/ping). Mientras el proceso esté vivo, nunca llega a los 15 minutos de inactividad.
 2. **Workflow de GitHub Actions** (`.github/workflows/keep-alive.yml`): respaldo externo cada 10 minutos que además
    **despierta** el servicio si se llegó a suspender (por un reinicio o un deploy). Defina la variable de repositorio
-   `BACKEND_URL` (Settings → Secrets and variables → Actions → Variables) si la URL no es `https://cobro-backend.onrender.com`.
+   `BACKEND_URL` (Settings → Secrets and variables → Actions → Variables) si la URL no es `https://cobro-backend-txeo.onrender.com`.
 3. **Frontend**: al abrir la app despierta el servidor y, mientras está abierta, lo llama cada pocos minutos.
 
 > Un servicio gratuito encendido todo el mes consume ≈ 730 de las 750 horas gratuitas mensuales de Render: alcanza
@@ -184,8 +188,8 @@ cédulas, teléfonos ni direcciones. Sin clave, el asistente responde con un tex
   (CUADRADA / SOBRANTE / FALTANTE). Con la caja cerrada no se aceptan abonos ni desembolsos ese día.
 
 - **Autenticación:** contraseñas con PBKDF2-HMAC-SHA256 y sal por usuario; sesiones JWT HS256 de 8 horas.
-  En desarrollo se crea el usuario `admin@cobro.com` / `Admin123*` (en producción solo si se define
-  `DEMO_ADMIN_PASSWORD`).
+  En desarrollo se crea el usuario `admin@cobro.com` / `Admin123*`. En producción se crea al arrancar
+  solo si no existe ningún administrador y se define `DEMO_ADMIN_PASSWORD` (clase `AdminInicial`).
 
 ## Machine Learning: scoring de riesgo
 

@@ -16,9 +16,12 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: https://*.vercel.app,http://localhost:4200
+        value: https://prestamos-system-front.vercel.app,https://*.vercel.app,http://localhost:4200
       - key: APP_SEED_ENABLED
         value: "false"
+      # Clave de admin@cobro.com: se crea al arrancar si no hay administradores (no se guarda en git).
+      - key: DEMO_ADMIN_PASSWORD
+        sync: false
       # Keep-alive: el servicio se llama a sí mismo cada 10 min por RENDER_EXTERNAL_URL
       # (variable que Render define sola) para no suspenderse por inactividad.
       - key: KEEPALIVE_ENABLED
