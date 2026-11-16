@@ -1,0 +1,20 @@
+# Build
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Base de datos local H2
+data/
+*.db
+
+# Logs de la JVM
+hs_err_pid*.log
+replay_pid*.log
+*.log
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
