@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -47,11 +46,5 @@ public class AuthController {
     @PostMapping("/auth/logout")
     public ResponseEntity<Void> logout() {
         return ResponseEntity.noContent().build();
-    }
-
-    /** Verificación de disponibilidad (público, usado por Render). */
-    @GetMapping("/health")
-    public Map<String, String> health() {
-        return Map.of("status", "UP");
     }
 }
