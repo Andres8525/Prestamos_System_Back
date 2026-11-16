@@ -8,7 +8,10 @@ import com.example.cobro.repository.PagoRepository;
 import com.example.cobro.repository.PrestamoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.example.cobro.tiemporeal.EventoNegocio;
+import com.example.cobro.tiemporeal.TipoEvento;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -60,6 +63,9 @@ public class CreditScoringService {
 
     @Autowired
     private HistorialMlService historialMl;
+
+    @Autowired
+    private ApplicationEventPublisher eventos;
 
     private volatile ModeloClasificacion modelo;
     private volatile ScoringDTO.ModeloInfo infoModelo;
@@ -140,6 +146,9 @@ public class CreditScoringService {
         this.infoModelo = info;
         this.resumen = resumen;
         historialMl.registrarEntrenamiento(resumen, origen);
+        eventos.publishEvent(EventoNegocio.de(TipoEvento.MODELO_ENTRENADO,
+                "Modelo reentrenado: " + elegido, "algoritmo", elegido, "auc", mejorPrueba.auc(),
+                "origen", origen.name()));
         log.info("Modelo de scoring entrenado: {} ({} muestras reales, {} sintéticas), AUC prueba={}, AUC CV={}±{}",
                 elegido, reales.size(), sinteticas.size(), mejorPrueba.auc(), mejorCv.aucMedia(), mejorCv.aucDesviacion());
         return resumen;
