@@ -7,7 +7,10 @@ import com.example.cobro.model.*;
 import com.example.cobro.repository.AbonoRepository;
 import com.example.cobro.repository.CobradorRepository;
 import com.example.cobro.repository.PagoRepository;
+import com.example.cobro.tiemporeal.EventoNegocio;
+import com.example.cobro.tiemporeal.TipoEvento;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -39,6 +42,9 @@ public class AbonoService {
 
     @Autowired
     private CajaService cajaService;
+
+    @Autowired
+    private ApplicationEventPublisher eventos;
 
     /** Registra un abono para la jornada de hoy. */
     public AbonoResponseDTO registrarAbono(Long prestamoId, Double monto, Long cobradorId, String observacion) {
@@ -98,6 +104,11 @@ public class AbonoService {
         AbonoResponseDTO dto = AbonoResponseDTO.fromEntity(abono);
         dto.setCuotasCubiertas(cubiertas);
         dto.setSaldoPrestamo(CalculadoraIntereses.redondear(prestamoService.calcularSaldo(prestamo.getId())));
+        eventos.publishEvent(EventoNegocio.de(TipoEvento.ABONO_REGISTRADO,
+                String.format(java.util.Locale.ROOT, "Abono de %.2f al préstamo #%d", dto.getMonto(), prestamo.getId()),
+                "abonoId", dto.getId(), "prestamoId", prestamo.getId(), "clienteId", dto.getClienteId(),
+                "cobradorId", dto.getCobradorId(), "monto", dto.getMonto(), "saldoPrestamo", dto.getSaldoPrestamo(),
+                "cuotasCubiertas", cubiertas));
         return dto;
     }
 
