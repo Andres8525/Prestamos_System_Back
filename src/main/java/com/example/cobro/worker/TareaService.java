@@ -4,6 +4,9 @@ import com.example.cobro.exception.RecursoNoEncontradoException;
 import com.example.cobro.exception.ReglaNegocioException;
 import com.example.cobro.model.TareaProceso;
 import com.example.cobro.repository.TareaProcesoRepository;
+import com.example.cobro.tiemporeal.EventoNegocio;
+import com.example.cobro.tiemporeal.TipoEvento;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,16 +27,26 @@ public class TareaService {
 
     private final TareaProcesoRepository repositorio;
     private final ColaTareas cola;
+    private final ApplicationEventPublisher eventos;
 
-    public TareaService(TareaProcesoRepository repositorio, ColaTareas cola) {
+    public TareaService(TareaProcesoRepository repositorio, ColaTareas cola, ApplicationEventPublisher eventos) {
         this.repositorio = repositorio;
         this.cola = cola;
+        this.eventos = eventos;
+    }
+
+    private void anunciar(TareaProceso t) {
+        eventos.publishEvent(EventoNegocio.de(TipoEvento.TAREA_ACTUALIZADA,
+                t.getTipo().getNombre() + ": " + t.getEstado(),
+                "tareaId", t.getId(), "tipo", t.getTipo().name(), "estado", t.getEstado().name(),
+                "intentos", t.getIntentos(), "worker", t.getWorker(), "resumen", t.getResumen(), "error", t.getError()));
     }
 
     /** Registra la tarea como PENDIENTE y la pone en la cola de los workers. */
     public TareaProceso encolar(TipoTarea tipo, int prioridad, String solicitante) {
         TareaProceso tarea = repositorio.save(new TareaProceso(tipo, Math.max(0, Math.min(prioridad, 10)), solicitante));
         cola.encolar(tarea.getId(), tarea.getPrioridad());
+        anunciar(tarea);
         return tarea;
     }
 
@@ -49,6 +62,7 @@ public class TareaService {
                     t.setIniciadaEn(LocalDateTime.now());
                     t.setFinalizadaEn(null);
                     t.setError(null);
+                    anunciar(t);
                     return t;
                 });
     }
@@ -60,6 +74,7 @@ public class TareaService {
             t.setResumen(resultado.resumen());
             t.setResultado(resultado.contenido());
             t.setFinalizadaEn(LocalDateTime.now());
+            anunciar(t);
         });
     }
 
@@ -75,6 +90,7 @@ public class TareaService {
             t.setFinalizadaEn(LocalDateTime.now());
             boolean reintentar = t.getIntentos() < t.getMaxIntentos();
             t.setEstado(reintentar ? EstadoTarea.PENDIENTE : EstadoTarea.FALLIDA);
+            anunciar(t);
             return reintentar;
         }).orElse(false);
     }
@@ -88,6 +104,7 @@ public class TareaService {
         t.setEstado(EstadoTarea.CANCELADA);
         t.setFinalizadaEn(LocalDateTime.now());
         cola.quitar(id);
+        anunciar(t);
         return t;
     }
 
@@ -102,6 +119,7 @@ public class TareaService {
         t.setIntentos(0);
         t.setError(null);
         cola.encolar(t.getId(), t.getPrioridad());
+        anunciar(t);
         return t;
     }
 
