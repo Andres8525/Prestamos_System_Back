@@ -1,14 +1,30 @@
 package com.example.cobro.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
 import java.util.List;
 
+/**
+ * Clase base abstracta de los usuarios del sistema (Administrador, Cobrador).
+ * Es @MappedSuperclass: sus atributos se heredan en las tablas de las subclases que sean entidades.
+ */
+@MappedSuperclass
 public abstract class Usuario {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String nombre;
+
     private String email;
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String contrasena;
-    private boolean activo;
+
+    @Column(nullable = false)
+    private boolean activo = true;
 
     public Usuario() {}
 
