@@ -44,6 +44,13 @@ Ejecutar en local contra PostgreSQL: `mvn spring-boot:run -Dspring-boot.run.prof
 2. Ingresar `DATABASE_URL` con la *Internal Database URL* de la base (misma región: Oregon).
 3. Desplegar y verificar `https://<servicio>.onrender.com/api/health` (Health Check Path: `/api/health`).
 
+### Si el deploy falla o el servicio no responde
+
+- **Las tablas no se crean en PostgreSQL** (`type "enum" does not exist`): ocurría porque el perfil base fijaba
+  `H2Dialect`. Ya está corregido: el perfil `prod` usa `PostgreSQLDialect`. Haga *Manual Deploy → Deploy latest commit*.
+- Revise *Events* y *Logs* del servicio; el build se puede reproducir localmente con
+  `docker build -t cobro .` y ejecutar con `docker run -e SPRING_PROFILES_ACTIVE=prod -e DATABASE_URL=... -p 8080:8080 cobro`.
+
 ### Servidor siempre activo (sin esperar a que despierte)
 
 El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico, y el siguiente login espera ≈ 1 minuto.
@@ -152,6 +159,19 @@ informe ejecutivo (worker `INFORME_IA`).
 
 A Groq solo se envían indicadores anónimos o agregados (variables de pago, probabilidades, totales); nunca nombres,
 cédulas, teléfonos ni direcciones. Sin clave, el asistente responde con un texto generado localmente.
+
+## Estructuras de datos
+
+| Estructura | Clase | Uso | Costo |
+|---|---|---|---|
+| Caché LRU (`LinkedHashMap` con orden de acceso) | `CacheLru` | scoring por cliente y día; se invalida con abonos y préstamos | O(1) |
+| Multimapa / índice agrupado | `IndiceAgrupado` | cuotas pendientes por préstamo en una sola consulta (sin N+1) | O(n) construir, O(1) consultar |
+| Cola de prioridad (montículo) | `PrioridadCobro` | ruta ordenada por urgencia de cobro | O(n log n) |
+| Árbol de prefijos | `Trie` | autocompletar clientes por nombre o cédula, sin tildes | O(m) por prefijo |
+| Árbol rojo-negro (`TreeMap.floorEntry`) | `TramosMora` | antigüedad de cartera por tramos de atraso | O(log k) |
+| Búfer circular (`ArrayDeque`) | `HistorialEventos` | últimos eventos WebSocket para reconexión | O(1) |
+| Cola de prioridad concurrente | `ColaTareas` | tareas de los workers | O(log n) |
+| `ConcurrentHashMap` / `EnumSet` | `RegistroConexiones`, `ConexionCliente` | conexiones abiertas y suscripciones | O(1) |
 
 ## Reglas de negocio
 
