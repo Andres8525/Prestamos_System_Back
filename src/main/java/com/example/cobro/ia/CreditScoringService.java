@@ -71,7 +71,9 @@ public class CreditScoringService {
     private volatile ModeloClasificacion modelo;
     private volatile ScoringDTO.ModeloInfo infoModelo;
     private volatile ResumenModeloDTO resumen;
-    private final CacheLru<Long, ScoringDTO> cacheClientes = new CacheLru<>(500);
+    /** Clave por cliente y día: los días de atraso cambian con la fecha aunque no haya abonos. */
+    private record ClaveScoring(Long clienteId, LocalDate dia) {}
+    private final CacheLru<ClaveScoring, ScoringDTO> cacheClientes = new CacheLru<>(500);
 
     @EventListener(ApplicationReadyEvent.class)
     public void entrenarAlIniciar() {
@@ -177,12 +179,13 @@ public class CreditScoringService {
 
     /** Evalúa el riesgo de incumplimiento de un cliente con todo su historial hasta hoy. */
     public ScoringDTO evaluarCliente(Long clienteId) {
-        return cacheClientes.obtenerOCalcular(clienteId, this::calcularCliente);
+        return cacheClientes.obtenerOCalcular(new ClaveScoring(clienteId, LocalDate.now()),
+                clave -> calcularCliente(clave.clienteId()));
     }
 
     /** El resultado de un cliente cambia con sus abonos y préstamos: se recalcula en la próxima consulta. */
     public void invalidarCliente(Long clienteId) {
-        cacheClientes.invalidar(clienteId);
+        cacheClientes.invalidar(new ClaveScoring(clienteId, LocalDate.now()));
     }
 
     public double tasaAciertosCache() {
