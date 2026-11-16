@@ -39,6 +39,9 @@ public class PrestamoService {
     @Autowired
     private AbonoRepository abonoRepository;
 
+    @Autowired
+    private CajaService cajaService;
+
     public Prestamo crearPrestamo(Long clienteId, Double monto, TipoLiquidacion tipo) {
         return crearPrestamo(new PrestamoRequestDTO(clienteId, monto, tipo), LocalDate.now());
     }
@@ -64,6 +67,8 @@ public class PrestamoService {
         Prestamo prestamo = new Prestamo();
         prestamo.setCliente(cliente);
         prestamo.setCobrador(resolverCobrador(dto.getCobradorId(), cliente));
+        // El desembolso sale de la caja del cobrador: no se permite si ya cuadró ese día.
+        cajaService.verificarCajaAbierta(prestamo.getCobrador(), fechaInicio);
         prestamo.setMonto(calculo.monto());
         prestamo.setTasaInteres(calculo.tasaInteres());
         prestamo.setMontoTotal(calculo.montoTotal());

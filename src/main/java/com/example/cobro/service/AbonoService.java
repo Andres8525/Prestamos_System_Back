@@ -37,6 +37,9 @@ public class AbonoService {
     @Autowired
     private PrestamoService prestamoService;
 
+    @Autowired
+    private CajaService cajaService;
+
     /** Registra un abono para la jornada de hoy. */
     public AbonoResponseDTO registrarAbono(Long prestamoId, Double monto, Long cobradorId, String observacion) {
         return registrarAbono(prestamoId, monto, cobradorId, observacion, LocalDate.now());
@@ -75,6 +78,7 @@ public class AbonoService {
         }
 
         Cobrador cobrador = resolverCobrador(cobradorId, prestamo);
+        cajaService.verificarCajaAbierta(cobrador, fecha);
         double cuotaEsperada = prestamo.getValorCuota() != null
                 ? prestamo.getValorCuota() : cuotasObjetivo.get(0).getMonto();
 
