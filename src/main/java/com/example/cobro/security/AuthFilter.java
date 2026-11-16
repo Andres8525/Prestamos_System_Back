@@ -27,7 +27,8 @@ public class AuthFilter extends OncePerRequestFilter {
 
     public static final String ATRIBUTO_USUARIO_ID = "usuarioId";
     private static final Set<String> RUTAS_PUBLICAS =
-            Set.of("/api/auth/login", "/api/auth/register", "/api/auth/verificar-email", "/api/health");
+            Set.of("/api/auth/login", "/api/auth/register", "/api/auth/verificar-email",
+                    "/api/health", "/api/ping");
 
     private final TokenService tokenService;
 
