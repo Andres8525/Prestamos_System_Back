@@ -4,17 +4,26 @@ import com.example.cobro.grpc.v1.*;
 import com.example.cobro.ia.CaracteristicasCrediticias;
 import com.example.cobro.ia.CreditScoringService;
 import com.example.cobro.ia.ScoringDTO;
+import com.example.cobro.model.EstadoPago;
+import com.example.cobro.model.Prestamo;
+import com.example.cobro.repository.PrestamoRepository;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import org.springframework.stereotype.Component;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /** Implementación gRPC del scoring de riesgo: reutiliza el mismo servicio de ML que la API REST. */
 @Component
 public class ScoringGrpcService extends ScoringServiceGrpc.ScoringServiceImplBase {
 
     private final CreditScoringService scoringService;
+    private final PrestamoRepository prestamoRepository;
 
-    public ScoringGrpcService(CreditScoringService scoringService) {
+    public ScoringGrpcService(CreditScoringService scoringService, PrestamoRepository prestamoRepository) {
         this.scoringService = scoringService;
+        this.prestamoRepository = prestamoRepository;
     }
 
     /** Unario: una petición, una respuesta. */
@@ -41,6 +50,31 @@ public class ScoringGrpcService extends ScoringServiceGrpc.ScoringServiceImplBas
             respuesta.onCompleted();
         } catch (Exception e) {
             respuesta.onError(ErroresGrpc.traducir(e));
+        }
+    }
+
+    /**
+     * Streaming de servidor: envía la evaluación de cada cliente con crédito activo a medida que se calcula.
+     * Si el cliente cancela la llamada, se deja de evaluar.
+     */
+    @Override
+    public void evaluarCartera(EvaluarCarteraRequest peticion, StreamObserver<EvaluacionRiesgo> respuesta) {
+        ServerCallStreamObserver<EvaluacionRiesgo> stream = (ServerCallStreamObserver<EvaluacionRiesgo>) respuesta;
+        try {
+            Set<Long> clientes = new LinkedHashSet<>();
+            prestamoRepository.findAll().stream()
+                    .filter(p -> p.getEstado() != EstadoPago.PAGADO)
+                    .map(Prestamo::getClienteId)
+                    .forEach(clientes::add);
+            int minimo = peticion.getNivelMinimo().getNumber();
+            for (Long id : clientes) {
+                if (stream.isCancelled()) return;
+                EvaluacionRiesgo e = aMensaje(scoringService.evaluarCliente(id));
+                if (e.getNivel().getNumber() >= minimo) stream.onNext(e);
+            }
+            stream.onCompleted();
+        } catch (Exception e) {
+            stream.onError(ErroresGrpc.traducir(e));
         }
     }
 
